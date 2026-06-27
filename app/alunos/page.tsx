@@ -1,5 +1,7 @@
+import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import NovoAlunoForm from './NovoAlunoForm'
+import BotoesAcao from './BotoesAcao'
 
 type Aluno = {
   id: number
@@ -9,13 +11,22 @@ type Aluno = {
   data_nascimento: string | null
   genero: string | null
   objetivo: string | null
+  ativo: boolean
   data_cadastro: string
 }
 
-export default async function AlunosPage() {
+export default async function AlunosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | undefined }>
+}) {
+  const { status } = await searchParams
+  const mostrarInativos = status === 'inativos'
+
   const { data: alunos, error } = await supabase
     .from('alunos')
     .select('*')
+    .eq('ativo', !mostrarInativos)
     .order('data_cadastro', { ascending: false })
 
   if (error) {
@@ -34,10 +45,37 @@ export default async function AlunosPage() {
           <p className="text-gray-500 mt-1">Gerencie os alunos da sua academia</p>
         </div>
 
+        <div className="flex gap-2 mb-4">
+          <Link
+            href="/alunos"
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              !mostrarInativos
+                ? 'bg-blue-600 text-white'
+                : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            Ativos
+          </Link>
+          <Link
+            href="/alunos?status=inativos"
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              mostrarInativos
+                ? 'bg-blue-600 text-white'
+                : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            Inativos
+          </Link>
+        </div>
+
         {alunos.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-            <p className="text-gray-400 text-lg">Nenhum aluno cadastrado ainda.</p>
-            <p className="text-gray-400 mt-1">Use o formulário abaixo para adicionar o primeiro!</p>
+            <p className="text-gray-400 text-lg">
+              {mostrarInativos ? 'Nenhum aluno inativo.' : 'Nenhum aluno cadastrado ainda.'}
+            </p>
+            {!mostrarInativos && (
+              <p className="text-gray-400 mt-1">Use o formulário abaixo para adicionar o primeiro!</p>
+            )}
           </div>
         ) : (
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -50,6 +88,7 @@ export default async function AlunosPage() {
                   <th className="text-left px-6 py-3 text-gray-600 font-semibold">E-mail</th>
                   <th className="text-left px-6 py-3 text-gray-600 font-semibold">Objetivo</th>
                   <th className="text-left px-6 py-3 text-gray-600 font-semibold">Cadastro</th>
+                  <th className="text-left px-6 py-3 text-gray-600 font-semibold">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -63,13 +102,17 @@ export default async function AlunosPage() {
                     <td className="px-6 py-4 text-gray-500">
                       {new Date(aluno.data_cadastro).toLocaleDateString('pt-BR')}
                     </td>
+                    <td className="px-6 py-4">
+                      <BotoesAcao id={aluno.id} ativo={aluno.ativo} />
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
-        <NovoAlunoForm />
+
+        {!mostrarInativos && <NovoAlunoForm />}
       </div>
     </div>
   )
