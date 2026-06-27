@@ -76,3 +76,12 @@ export async function excluirAluno(id: number, _formData: FormData) {
   revalidatePath('/alunos')
   redirect('/alunos')
 }
+
+export async function excluirAlunoConsulta(id: number): Promise<{ erro?: string }> {
+  const { error } = await supabase.from('alunos').delete().eq('id', id)
+
+  if (error) return { erro: error.message }
+
+  revalidatePath('/consulta')
+  return {}
+}

@@ -31,7 +31,22 @@ export default function Home() {
               </div>
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">Alunos</h2>
-                <p className="text-sm text-gray-500">Cadastre e visualize seus alunos</p>
+                <p className="text-sm text-gray-500">Cadastre e gerencie seus alunos</p>
+              </div>
+              <span className="ml-auto text-gray-300 group-hover:text-blue-400 text-xl transition-colors">→</span>
+            </div>
+          </Link>
+          <Link
+            href="/consulta"
+            className="bg-white rounded-xl border border-gray-200 p-6 hover:border-blue-400 hover:shadow-md transition-all group"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center text-2xl group-hover:bg-blue-100 transition-colors">
+                🔍
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Consulta</h2>
+                <p className="text-sm text-gray-500">Busque e filtre alunos por nome, objetivo e idade</p>
               </div>
               <span className="ml-auto text-gray-300 group-hover:text-blue-400 text-xl transition-colors">→</span>
             </div>
