@@ -7,6 +7,7 @@ type Aluno = {
   telefone: string | null
   email: string | null
   data_nascimento: string | null
+  genero: string | null
   objetivo: string | null
   data_cadastro: string
 }
@@ -44,6 +45,7 @@ export default async function AlunosPage() {
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="text-left px-6 py-3 text-gray-600 font-semibold">Nome</th>
+                  <th className="text-left px-6 py-3 text-gray-600 font-semibold">Gênero</th>
                   <th className="text-left px-6 py-3 text-gray-600 font-semibold">Telefone</th>
                   <th className="text-left px-6 py-3 text-gray-600 font-semibold">E-mail</th>
                   <th className="text-left px-6 py-3 text-gray-600 font-semibold">Objetivo</th>
@@ -54,6 +56,7 @@ export default async function AlunosPage() {
                 {alunos.map((aluno: Aluno) => (
                   <tr key={aluno.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 font-medium text-gray-900">{aluno.nome}</td>
+                    <td className="px-6 py-4 text-gray-600 capitalize">{aluno.genero ?? '—'}</td>
                     <td className="px-6 py-4 text-gray-600">{aluno.telefone ?? '—'}</td>
                     <td className="px-6 py-4 text-gray-600">{aluno.email ?? '—'}</td>
                     <td className="px-6 py-4 text-gray-600">{aluno.objetivo ?? '—'}</td>

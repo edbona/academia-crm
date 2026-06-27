@@ -17,6 +17,7 @@ export async function criarAluno(prevState: Estado, formData: FormData): Promise
     telefone: (formData.get('telefone') as string) || null,
     email: (formData.get('email') as string) || null,
     data_nascimento: (formData.get('data_nascimento') as string) || null,
+    genero: (formData.get('genero') as string) || null,
     objetivo: (formData.get('objetivo') as string) || null,
   })
 
