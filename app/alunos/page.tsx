@@ -53,7 +53,9 @@ export default async function AlunosPage({
           </Link>
         </div>
 
-        <div className="flex gap-2 mb-4">
+        {!mostrarInativos && <NovoAlunoForm />}
+
+        <div className="flex gap-2 mt-8 mb-4">
           <Link
             href="/alunos"
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
@@ -81,9 +83,6 @@ export default async function AlunosPage({
             <p className="text-gray-400 text-lg">
               {mostrarInativos ? 'Nenhum aluno inativo.' : 'Nenhum aluno cadastrado ainda.'}
             </p>
-            {!mostrarInativos && (
-              <p className="text-gray-400 mt-1">Use o formulário abaixo para adicionar o primeiro!</p>
-            )}
           </div>
         ) : (
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -119,8 +118,6 @@ export default async function AlunosPage({
             </table>
           </div>
         )}
-
-        {!mostrarInativos && <NovoAlunoForm />}
       </div>
     </div>
   )
