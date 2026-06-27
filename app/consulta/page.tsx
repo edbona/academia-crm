@@ -27,6 +27,32 @@ function calcularIdade(dataNascimento: string | null): number | null {
   return idade
 }
 
+// Separa string de objetivos em itens individuais (divide por vírgula ou ponto-e-vírgula)
+function splitObjetivos(objetivo: string | null): string[] {
+  if (!objetivo) return []
+  return objetivo
+    .split(/[,;]/)
+    .map(s => s.trim())
+    .filter(Boolean)
+}
+
+function TagsObjetivo({ objetivo }: { objetivo: string | null }) {
+  const tags = splitObjetivos(objetivo)
+  if (tags.length === 0) return <span className="text-gray-400">—</span>
+  return (
+    <div className="flex flex-wrap gap-1">
+      {tags.map(tag => (
+        <span
+          key={tag}
+          className="inline-block bg-blue-50 text-blue-700 text-xs px-2 py-0.5 rounded-full whitespace-nowrap"
+        >
+          {tag}
+        </span>
+      ))}
+    </div>
+  )
+}
+
 const FAIXAS = [
   { label: 'Todas as idades', min: 0, max: 999 },
   { label: '18 – 25 anos', min: 18, max: 25 },
@@ -55,9 +81,12 @@ export default function ConsultaPage() {
       })
   }, [])
 
+  // Coleta todos os objetivos individuais de todos os alunos, sem repetição
   const objetivos = useMemo(() => {
-    const unicos = [...new Set(alunos.map(a => a.objetivo).filter(Boolean))] as string[]
-    return unicos.sort()
+    const todos = alunos.flatMap(a => splitObjetivos(a.objetivo))
+    const unicos = [...new Set(todos.map(o => o.toLowerCase()))]
+      .map(lower => todos.find(o => o.toLowerCase() === lower)!)
+    return unicos.sort((a, b) => a.localeCompare(b, 'pt-BR'))
   }, [alunos])
 
   const faixa = FAIXAS.find(f => f.label === faixaLabel) ?? FAIXAS[0]
@@ -65,11 +94,19 @@ export default function ConsultaPage() {
   const filtrados = useMemo(() => {
     return alunos.filter(aluno => {
       const nomeOk = aluno.nome.toLowerCase().includes(busca.toLowerCase())
-      const objOk = !objetivoFiltro || aluno.objetivo === objetivoFiltro
+
+      // Verifica se algum objetivo individual do aluno bate com o filtro selecionado
+      const objOk =
+        !objetivoFiltro ||
+        splitObjetivos(aluno.objetivo).some(
+          o => o.toLowerCase() === objetivoFiltro.toLowerCase()
+        )
+
       const idade = calcularIdade(aluno.data_nascimento)
       const idadeOk =
         faixa.min === 0 ||
         (idade !== null && idade >= faixa.min && idade <= faixa.max)
+
       return nomeOk && objOk && idadeOk
     })
   }, [alunos, busca, objetivoFiltro, faixa])
@@ -115,7 +152,10 @@ export default function ConsultaPage() {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Objetivo</label>
+            <label className="block text-xs font-medium text-gray-500 mb-1">
+              Objetivo
+              <span className="ml-1 text-gray-400 font-normal">(por objetivo individual)</span>
+            </label>
             <select
               value={objetivoFiltro}
               onChange={e => setObjetivoFiltro(e.target.value)}
@@ -182,7 +222,7 @@ export default function ConsultaPage() {
                 <tr>
                   <th className="text-left px-6 py-3 text-gray-600 font-semibold">Nome</th>
                   <th className="text-left px-6 py-3 text-gray-600 font-semibold">Telefone</th>
-                  <th className="text-left px-6 py-3 text-gray-600 font-semibold">Objetivo</th>
+                  <th className="text-left px-6 py-3 text-gray-600 font-semibold">Objetivos</th>
                   <th className="text-left px-6 py-3 text-gray-600 font-semibold">Idade</th>
                   <th className="text-left px-6 py-3 text-gray-600 font-semibold">Cadastro</th>
                   <th className="text-left px-6 py-3 text-gray-600 font-semibold">Ações</th>
@@ -199,8 +239,12 @@ export default function ConsultaPage() {
                         </Link>
                       </td>
                       <td className="px-6 py-4 text-gray-600">{aluno.telefone ?? '—'}</td>
-                      <td className="px-6 py-4 text-gray-600">{aluno.objetivo ?? '—'}</td>
-                      <td className="px-6 py-4 text-gray-600">{idade !== null ? `${idade} anos` : '—'}</td>
+                      <td className="px-6 py-4">
+                        <TagsObjetivo objetivo={aluno.objetivo} />
+                      </td>
+                      <td className="px-6 py-4 text-gray-600">
+                        {idade !== null ? `${idade} anos` : '—'}
+                      </td>
                       <td className="px-6 py-4 text-gray-500">
                         {new Date(aluno.data_cadastro).toLocaleDateString('pt-BR')}
                       </td>
@@ -233,7 +277,7 @@ export default function ConsultaPage() {
               return (
                 <div
                   key={aluno.id}
-                  className="bg-white rounded-xl border border-gray-200 px-6 py-4 flex items-center justify-between gap-4"
+                  className="bg-white rounded-xl border border-gray-200 px-6 py-4 flex items-start justify-between gap-4"
                 >
                   <div className="flex-1 min-w-0">
                     <Link
@@ -244,10 +288,21 @@ export default function ConsultaPage() {
                     </Link>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-gray-500">
                       {aluno.telefone && <span>📱 {aluno.telefone}</span>}
-                      {aluno.objetivo && <span>🎯 {aluno.objetivo}</span>}
                       {idade !== null && <span>🎂 {idade} anos</span>}
                       <span>📅 {new Date(aluno.data_cadastro).toLocaleDateString('pt-BR')}</span>
                     </div>
+                    {aluno.objetivo && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {splitObjetivos(aluno.objetivo).map(tag => (
+                          <span
+                            key={tag}
+                            className="inline-block bg-blue-50 text-blue-700 text-xs px-2 py-0.5 rounded-full"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div className="flex gap-2 shrink-0">
                     <Link
