@@ -10,7 +10,8 @@ type Aluno = {
   email: string | null
   data_nascimento: string | null
   genero: string | null
-  objetivo: string | null
+  objetivo_geral: string | null
+  objetivos_especificos: string[] | null
   ativo: boolean
   data_cadastro: string
 }
@@ -93,7 +94,7 @@ export default async function AlunosPage({
                   <th className="text-left px-6 py-3 text-gray-600 font-semibold">Gênero</th>
                   <th className="text-left px-6 py-3 text-gray-600 font-semibold">Telefone</th>
                   <th className="text-left px-6 py-3 text-gray-600 font-semibold">E-mail</th>
-                  <th className="text-left px-6 py-3 text-gray-600 font-semibold">Objetivo</th>
+                  <th className="text-left px-6 py-3 text-gray-600 font-semibold">Objetivo Geral</th>
                   <th className="text-left px-6 py-3 text-gray-600 font-semibold">Cadastro</th>
                   <th className="text-left px-6 py-3 text-gray-600 font-semibold">Ações</th>
                 </tr>
@@ -105,7 +106,7 @@ export default async function AlunosPage({
                     <td className="px-6 py-4 text-gray-600 capitalize">{aluno.genero ?? '—'}</td>
                     <td className="px-6 py-4 text-gray-600">{aluno.telefone ?? '—'}</td>
                     <td className="px-6 py-4 text-gray-600">{aluno.email ?? '—'}</td>
-                    <td className="px-6 py-4 text-gray-600">{aluno.objetivo ?? '—'}</td>
+                    <td className="px-6 py-4 text-gray-600 max-w-xs truncate">{aluno.objetivo_geral ?? '—'}</td>
                     <td className="px-6 py-4 text-gray-500">
                       {new Date(aluno.data_cadastro).toLocaleDateString('pt-BR')}
                     </td>

@@ -1,7 +1,8 @@
 'use client'
 
-import { useActionState, useEffect, useRef } from 'react'
+import { useActionState, useEffect, useRef, useState } from 'react'
 import { criarAluno } from './actions'
+import { supabase } from '@/lib/supabase'
 
 type Estado = { tipo: 'erro'; mensagem: string } | { tipo: 'sucesso' } | null
 
@@ -9,11 +10,47 @@ export default function NovoAlunoForm() {
   const [estado, action, pending] = useActionState<Estado, FormData>(criarAluno, null)
   const formRef = useRef<HTMLFormElement>(null)
 
+  const [catalogo, setCatalogo] = useState<string[]>([])
+  const [extras, setExtras] = useState<string[]>([])
+  const [selecionados, setSelecionados] = useState<Set<string>>(new Set())
+  const [inputNovo, setInputNovo] = useState('')
+
+  const todosObjetivos = [...catalogo, ...extras]
+
+  useEffect(() => {
+    supabase
+      .from('objetivos_catalogo')
+      .select('nome')
+      .order('nome')
+      .then(({ data }) => setCatalogo(data?.map(d => d.nome) ?? []))
+  }, [])
+
   useEffect(() => {
     if (estado?.tipo === 'sucesso') {
       formRef.current?.reset()
+      setSelecionados(new Set())
+      setExtras([])
     }
   }, [estado])
+
+  function toggle(nome: string) {
+    setSelecionados(prev => {
+      const s = new Set(prev)
+      s.has(nome) ? s.delete(nome) : s.add(nome)
+      return s
+    })
+  }
+
+  function adicionarNovo() {
+    const nome = inputNovo.trim()
+    if (!nome) return
+    const jaExiste = todosObjetivos.some(o => o.toLowerCase() === nome.toLowerCase())
+    if (!jaExiste) {
+      setExtras(prev => [...prev, nome])
+    }
+    setSelecionados(prev => new Set([...prev, nome]))
+    setInputNovo('')
+  }
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6 mt-8">
@@ -21,10 +58,9 @@ export default function NovoAlunoForm() {
 
       {estado?.tipo === 'sucesso' && (
         <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
-          Aluno cadastrado com sucesso! A lista acima foi atualizada.
+          Aluno cadastrado com sucesso! A lista foi atualizada.
         </div>
       )}
-
       {estado?.tipo === 'erro' && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
           {estado.mensagem}
@@ -32,6 +68,10 @@ export default function NovoAlunoForm() {
       )}
 
       <form ref={formRef} action={action} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {[...selecionados].map(obj => (
+          <input type="hidden" name="objetivos_especificos" value={obj} key={obj} />
+        ))}
+
         <div className="sm:col-span-2">
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Nome <span className="text-red-500">*</span>
@@ -43,6 +83,19 @@ export default function NovoAlunoForm() {
             placeholder="Nome completo do aluno"
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Gênero</label>
+          <select
+            name="genero"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Selecione...</option>
+            <option value="masculino">Masculino</option>
+            <option value="feminino">Feminino</option>
+            <option value="outro">Outro</option>
+          </select>
         </div>
 
         <div>
@@ -74,27 +127,70 @@ export default function NovoAlunoForm() {
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Gênero</label>
-          <select
-            name="genero"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Selecione...</option>
-            <option value="masculino">Masculino</option>
-            <option value="feminino">Feminino</option>
-            <option value="outro">Outro</option>
-          </select>
+        <div className="sm:col-span-2">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Objetivo Geral</label>
+          <textarea
+            name="objetivo_geral"
+            rows={3}
+            placeholder="Descreva o objetivo principal do aluno..."
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+          />
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Objetivo</label>
-          <input
-            name="objetivo"
-            type="text"
-            placeholder="ex: perder peso, ganhar massa"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+        <div className="sm:col-span-2">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Objetivos Específicos
+            {selecionados.size > 0 && (
+              <span className="ml-2 text-xs font-normal text-blue-600">
+                {selecionados.size} selecionado(s)
+              </span>
+            )}
+          </label>
+
+          {todosObjetivos.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              {todosObjetivos.map(obj => (
+                <label
+                  key={obj}
+                  className="flex items-center gap-2 text-sm cursor-pointer select-none group"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selecionados.has(obj)}
+                    onChange={() => toggle(obj)}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-gray-700 group-hover:text-gray-900">{obj}</span>
+                </label>
+              ))}
+            </div>
+          )}
+
+          <div className="flex gap-2 mt-3">
+            <input
+              type="text"
+              value={inputNovo}
+              onChange={e => setInputNovo(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  adicionarNovo()
+                }
+              }}
+              placeholder="Novo objetivo específico..."
+              className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+              type="button"
+              onClick={adicionarNovo}
+              className="px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors whitespace-nowrap"
+            >
+              + Adicionar
+            </button>
+          </div>
+          <p className="text-xs text-gray-400 mt-1">
+            Digite um objetivo não listado e clique em Adicionar — ele será salvo no catálogo.
+          </p>
         </div>
 
         <div className="sm:col-span-2">

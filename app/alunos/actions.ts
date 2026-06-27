@@ -6,6 +6,16 @@ import { redirect } from 'next/navigation'
 
 type Estado = { tipo: 'erro'; mensagem: string } | { tipo: 'sucesso' } | null
 
+async function salvarNovosObjetivos(objetivos: string[]) {
+  if (objetivos.length === 0) return
+  await supabase
+    .from('objetivos_catalogo')
+    .upsert(
+      objetivos.map(nome => ({ nome })),
+      { onConflict: 'nome', ignoreDuplicates: true }
+    )
+}
+
 export async function criarAluno(prevState: Estado, formData: FormData): Promise<Estado> {
   const nome = (formData.get('nome') as string)?.trim()
 
@@ -13,13 +23,17 @@ export async function criarAluno(prevState: Estado, formData: FormData): Promise
     return { tipo: 'erro', mensagem: 'O nome é obrigatório.' }
   }
 
+  const objetivosEspecificos = formData.getAll('objetivos_especificos') as string[]
+  await salvarNovosObjetivos(objetivosEspecificos)
+
   const { error } = await supabase.from('alunos').insert({
     nome,
     telefone: (formData.get('telefone') as string) || null,
     email: (formData.get('email') as string) || null,
     data_nascimento: (formData.get('data_nascimento') as string) || null,
     genero: (formData.get('genero') as string) || null,
-    objetivo: (formData.get('objetivo') as string) || null,
+    objetivo_geral: (formData.get('objetivo_geral') as string) || null,
+    objetivos_especificos: objetivosEspecificos,
   })
 
   if (error) {
@@ -37,6 +51,9 @@ export async function atualizarAluno(id: number, prevState: Estado, formData: Fo
     return { tipo: 'erro', mensagem: 'O nome é obrigatório.' }
   }
 
+  const objetivosEspecificos = formData.getAll('objetivos_especificos') as string[]
+  await salvarNovosObjetivos(objetivosEspecificos)
+
   const { error } = await supabase
     .from('alunos')
     .update({
@@ -45,7 +62,8 @@ export async function atualizarAluno(id: number, prevState: Estado, formData: Fo
       email: (formData.get('email') as string) || null,
       data_nascimento: (formData.get('data_nascimento') as string) || null,
       genero: (formData.get('genero') as string) || null,
-      objetivo: (formData.get('objetivo') as string) || null,
+      objetivo_geral: (formData.get('objetivo_geral') as string) || null,
+      objetivos_especificos: objetivosEspecificos,
     })
     .eq('id', id)
 
