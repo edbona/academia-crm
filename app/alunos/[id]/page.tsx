@@ -74,6 +74,7 @@ export default async function PerfilAlunoPage({
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
             <Campo label="Nome completo" valor={aluno.nome} />
             <Campo label="Gênero" valor={aluno.genero} />
+            <Campo label="CPF" valor={aluno.cpf} />
             <Campo label="Telefone" valor={aluno.telefone} />
             <Campo label="E-mail" valor={aluno.email} />
             <Campo

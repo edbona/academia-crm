@@ -10,6 +10,7 @@ type Aluno = {
   email: string | null
   data_nascimento: string | null
   genero: string | null
+  cpf: string | null
   objetivo_geral: string | null
   objetivos_especificos: string[] | null
   ativo: boolean
@@ -92,6 +93,7 @@ export default async function AlunosPage({
                 <tr>
                   <th className="text-left px-6 py-3 text-gray-600 font-semibold">Nome</th>
                   <th className="text-left px-6 py-3 text-gray-600 font-semibold">Gênero</th>
+                  <th className="text-left px-6 py-3 text-gray-600 font-semibold">CPF</th>
                   <th className="text-left px-6 py-3 text-gray-600 font-semibold">Telefone</th>
                   <th className="text-left px-6 py-3 text-gray-600 font-semibold">E-mail</th>
                   <th className="text-left px-6 py-3 text-gray-600 font-semibold">Objetivo Geral</th>
@@ -104,6 +106,7 @@ export default async function AlunosPage({
                   <tr key={aluno.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 font-medium text-gray-900">{aluno.nome}</td>
                     <td className="px-6 py-4 text-gray-600 capitalize">{aluno.genero ?? '—'}</td>
+                    <td className="px-6 py-4 text-gray-600">{aluno.cpf ?? '—'}</td>
                     <td className="px-6 py-4 text-gray-600">{aluno.telefone ?? '—'}</td>
                     <td className="px-6 py-4 text-gray-600">{aluno.email ?? '—'}</td>
                     <td className="px-6 py-4 text-gray-600 max-w-xs truncate">{aluno.objetivo_geral ?? '—'}</td>

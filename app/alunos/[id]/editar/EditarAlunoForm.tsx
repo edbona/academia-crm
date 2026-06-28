@@ -15,6 +15,7 @@ type Aluno = {
   objetivo_geral: string | null
   objetivos_especificos: string[] | null
   plano_id: number | null
+  cpf: string | null
 }
 
 type PlanoOpcao = { id: number; nome: string; valor: number }
@@ -132,6 +133,17 @@ export default function EditarAlunoForm({ aluno, origem }: { aluno: Aluno; orige
             type="tel"
             defaultValue={aluno.telefone ?? ''}
             placeholder="(11) 99999-9999"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">CPF</label>
+          <input
+            name="cpf"
+            type="text"
+            defaultValue={aluno.cpf ?? ''}
+            placeholder="000.000.000-00"
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
