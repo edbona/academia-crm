@@ -26,6 +26,9 @@ export async function criarAluno(prevState: Estado, formData: FormData): Promise
   const objetivosEspecificos = formData.getAll('objetivos_especificos') as string[]
   await salvarNovosObjetivos(objetivosEspecificos)
 
+  const planoIdStr = formData.get('plano_id') as string
+  const plano_id = planoIdStr ? Number(planoIdStr) : null
+
   const { error } = await supabase.from('alunos').insert({
     nome,
     telefone: (formData.get('telefone') as string) || null,
@@ -34,6 +37,7 @@ export async function criarAluno(prevState: Estado, formData: FormData): Promise
     genero: (formData.get('genero') as string) || null,
     objetivo_geral: (formData.get('objetivo_geral') as string) || null,
     objetivos_especificos: objetivosEspecificos,
+    plano_id,
   })
 
   if (error) {
@@ -54,6 +58,9 @@ export async function atualizarAluno(id: number, prevState: Estado, formData: Fo
   const objetivosEspecificos = formData.getAll('objetivos_especificos') as string[]
   await salvarNovosObjetivos(objetivosEspecificos)
 
+  const planoIdStr = formData.get('plano_id') as string
+  const plano_id = planoIdStr ? Number(planoIdStr) : null
+
   const { error } = await supabase
     .from('alunos')
     .update({
@@ -64,6 +71,7 @@ export async function atualizarAluno(id: number, prevState: Estado, formData: Fo
       genero: (formData.get('genero') as string) || null,
       objetivo_geral: (formData.get('objetivo_geral') as string) || null,
       objetivos_especificos: objetivosEspecificos,
+      plano_id,
     })
     .eq('id', id)
 
@@ -75,6 +83,17 @@ export async function atualizarAluno(id: number, prevState: Estado, formData: Fo
   revalidatePath('/alunos')
   revalidatePath('/consulta')
   redirect(destino)
+}
+
+export async function atualizarPlanoAluno(alunoId: number, planoId: number | null): Promise<{ erro?: string }> {
+  const { error } = await supabase
+    .from('alunos')
+    .update({ plano_id: planoId })
+    .eq('id', alunoId)
+  if (error) return { erro: error.message }
+  revalidatePath('/consulta')
+  revalidatePath('/alunos')
+  return {}
 }
 
 export async function alterarStatus(id: number, ativo: boolean, _formData: FormData) {

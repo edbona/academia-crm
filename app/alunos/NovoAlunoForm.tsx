@@ -6,6 +6,8 @@ import { supabase } from '@/lib/supabase'
 
 type Estado = { tipo: 'erro'; mensagem: string } | { tipo: 'sucesso' } | null
 
+type PlanoOpcao = { id: number; nome: string; valor: number }
+
 export default function NovoAlunoForm() {
   const [estado, action, pending] = useActionState<Estado, FormData>(criarAluno, null)
   const formRef = useRef<HTMLFormElement>(null)
@@ -14,15 +16,19 @@ export default function NovoAlunoForm() {
   const [extras, setExtras] = useState<string[]>([])
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set())
   const [inputNovo, setInputNovo] = useState('')
+  const [planos, setPlanos] = useState<PlanoOpcao[]>([])
+  const [planoSelecionadoId, setPlanoSelecionadoId] = useState('')
 
   const todosObjetivos = [...catalogo, ...extras]
 
   useEffect(() => {
-    supabase
-      .from('objetivos_catalogo')
-      .select('nome')
-      .order('nome')
-      .then(({ data }) => setCatalogo(data?.map(d => d.nome) ?? []))
+    Promise.all([
+      supabase.from('objetivos_catalogo').select('nome').order('nome'),
+      supabase.from('planos').select('id, nome, valor').eq('ativo', true).order('criado_em'),
+    ]).then(([{ data: catalogoData }, { data: planosData }]) => {
+      setCatalogo(catalogoData?.map(d => d.nome) ?? [])
+      setPlanos(planosData ?? [])
+    })
   }, [])
 
   useEffect(() => {
@@ -30,6 +36,7 @@ export default function NovoAlunoForm() {
       formRef.current?.reset()
       setSelecionados(new Set())
       setExtras([])
+      setPlanoSelecionadoId('')
     }
   }, [estado])
 
@@ -71,6 +78,7 @@ export default function NovoAlunoForm() {
         {[...selecionados].map(obj => (
           <input type="hidden" name="objetivos_especificos" value={obj} key={obj} />
         ))}
+        <input type="hidden" name="plano_id" value={planoSelecionadoId} />
 
         <div className="sm:col-span-2">
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -95,6 +103,22 @@ export default function NovoAlunoForm() {
             <option value="masculino">Masculino</option>
             <option value="feminino">Feminino</option>
             <option value="outro">Outro</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Plano de Adesão</label>
+          <select
+            value={planoSelecionadoId}
+            onChange={e => setPlanoSelecionadoId(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Sem plano</option>
+            {planos.map(p => (
+              <option key={p.id} value={p.id}>
+                {p.nome}{p.valor > 0 ? ` — R$ ${p.valor.toFixed(2).replace('.', ',')}` : ''}
+              </option>
+            ))}
           </select>
         </div>
 

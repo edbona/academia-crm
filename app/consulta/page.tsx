@@ -1,9 +1,15 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useTransition } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
-import { excluirAlunoConsulta } from '@/app/alunos/actions'
+import { excluirAlunoConsulta, atualizarPlanoAluno } from '@/app/alunos/actions'
+
+type PlanoInfo = {
+  id: number
+  nome: string
+  valor: number
+}
 
 type Aluno = {
   id: number
@@ -16,6 +22,8 @@ type Aluno = {
   objetivos_especificos: string[] | null
   ativo: boolean
   data_cadastro: string
+  plano_id: number | null
+  planos: PlanoInfo | null
 }
 
 function calcularIdade(dataNascimento: string | null): number | null {
@@ -26,6 +34,10 @@ function calcularIdade(dataNascimento: string | null): number | null {
   const m = hoje.getMonth() - nasc.getMonth()
   if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) idade--
   return idade
+}
+
+function formatarMoeda(valor: number) {
+  return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
 function TagsObjetivo({ objetivos }: { objetivos: string[] | null }) {
@@ -41,10 +53,10 @@ function TagsObjetivo({ objetivos }: { objetivos: string[] | null }) {
   )
 }
 
-
 export default function ConsultaPage() {
   const [alunos, setAlunos] = useState<Aluno[]>([])
   const [catalogo, setCatalogo] = useState<string[]>([])
+  const [catalogoPlanos, setCatalogoPlanos] = useState<PlanoInfo[]>([])
   const [carregando, setCarregando] = useState(true)
   const [busca, setBusca] = useState('')
   const [objetivoFiltro, setObjetivoFiltro] = useState('')
@@ -52,14 +64,20 @@ export default function ConsultaPage() {
   const [idadeMin, setIdadeMin] = useState('')
   const [idadeMax, setIdadeMax] = useState('')
   const [modo, setModo] = useState<'lista' | 'tabela'>('tabela')
+  const [mostrarValores, setMostrarValores] = useState(true)
+  const [editandoPlanoId, setEditandoPlanoId] = useState<number | null>(null)
+  const [planoEditSelecionado, setPlanoEditSelecionado] = useState('')
+  const [isPendingPlano, startPlano] = useTransition()
 
   useEffect(() => {
     Promise.all([
-      supabase.from('alunos').select('*').eq('ativo', true).order('nome'),
+      supabase.from('alunos').select('*, planos!plano_id(id, nome, valor)').eq('ativo', true).order('nome'),
       supabase.from('objetivos_catalogo').select('nome').order('nome'),
-    ]).then(([{ data: alunosData }, { data: catalogoData }]) => {
-      setAlunos(alunosData ?? [])
+      supabase.from('planos').select('id, nome, valor').eq('ativo', true).order('criado_em'),
+    ]).then(([{ data: alunosData }, { data: catalogoData }, { data: planosData }]) => {
+      setAlunos((alunosData ?? []) as Aluno[])
       setCatalogo(catalogoData?.map(d => d.nome) ?? [])
+      setCatalogoPlanos(planosData ?? [])
       setCarregando(false)
     })
   }, [])
@@ -82,15 +100,45 @@ export default function ConsultaPage() {
     })
   }, [alunos, busca, objetivoFiltro, generoFiltro, idadeMin, idadeMax])
 
+  const totalPlanos = useMemo(
+    () => filtrados.reduce((sum, a) => sum + (a.planos?.valor ?? 0), 0),
+    [filtrados]
+  )
+
   async function handleExcluir(id: number, nome: string) {
     if (!confirm(`Tem certeza que deseja excluir ${nome}? Esta ação não pode ser desfeita.`)) return
     const resultado = await excluirAlunoConsulta(id)
     if (!resultado.erro) setAlunos(prev => prev.filter(a => a.id !== id))
   }
 
+  function iniciarEdicaoPlano(aluno: Aluno) {
+    setEditandoPlanoId(aluno.id)
+    setPlanoEditSelecionado(aluno.plano_id?.toString() ?? '')
+  }
+
+  function cancelarEdicaoPlano() {
+    setEditandoPlanoId(null)
+    setPlanoEditSelecionado('')
+  }
+
+  function handleSalvarPlano(alunoId: number) {
+    const planoId = planoEditSelecionado ? Number(planoEditSelecionado) : null
+    startPlano(async () => {
+      const resultado = await atualizarPlanoAluno(alunoId, planoId)
+      if (!resultado.erro) {
+        const planoInfo = planoId ? (catalogoPlanos.find(p => p.id === planoId) ?? null) : null
+        setAlunos(prev => prev.map(a =>
+          a.id === alunoId ? { ...a, plano_id: planoId, planos: planoInfo } : a
+        ))
+        setEditandoPlanoId(null)
+        setPlanoEditSelecionado('')
+      }
+    })
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-5xl mx-auto px-4 py-10">
+      <div className="max-w-7xl mx-auto px-4 py-10">
 
         <div className="mb-8 flex items-start justify-between">
           <div>
@@ -104,6 +152,7 @@ export default function ConsultaPage() {
           </Link>
         </div>
 
+        {/* Filtros */}
         <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Buscar por nome</label>
@@ -141,7 +190,6 @@ export default function ConsultaPage() {
               <option value="outro">Outro</option>
             </select>
           </div>
-
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Faixa de idade</label>
             <div className="flex items-center gap-2">
@@ -168,7 +216,18 @@ export default function ConsultaPage() {
           </div>
         </div>
 
+        {/* Controles de visualização */}
         <div className="flex justify-end gap-2 mb-4">
+          <button
+            onClick={() => setMostrarValores(v => !v)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${
+              mostrarValores
+                ? 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                : 'bg-amber-50 border-amber-300 text-amber-700'
+            }`}
+          >
+            {mostrarValores ? '🔒 Ocultar valores' : '👁 Mostrar valores'}
+          </button>
           <button onClick={() => setModo('lista')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${modo === 'lista' ? 'bg-blue-600 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
             ☰ Lista
           </button>
@@ -177,6 +236,7 @@ export default function ConsultaPage() {
           </button>
         </div>
 
+        {/* Conteúdo */}
         {carregando ? (
           <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
             <p className="text-gray-400">Carregando alunos...</p>
@@ -188,52 +248,111 @@ export default function ConsultaPage() {
           </div>
         ) : modo === 'tabela' ? (
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="text-left px-6 py-3 text-gray-600 font-semibold">Nome</th>
-                  <th className="text-left px-6 py-3 text-gray-600 font-semibold">Gênero</th>
-                  <th className="text-left px-6 py-3 text-gray-600 font-semibold">Telefone</th>
-                  <th className="text-left px-6 py-3 text-gray-600 font-semibold">Objetivos Específicos</th>
-                  <th className="text-left px-6 py-3 text-gray-600 font-semibold">Idade</th>
-                  <th className="text-left px-6 py-3 text-gray-600 font-semibold">Cadastro</th>
-                  <th className="text-left px-6 py-3 text-gray-600 font-semibold">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {filtrados.map(aluno => {
-                  const idade = calcularIdade(aluno.data_nascimento)
-                  return (
-                    <tr key={aluno.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 font-medium">
-                        <Link href={`/alunos/${aluno.id}`} className="text-blue-600 hover:underline">
-                          {aluno.nome}
-                        </Link>
-                      </td>
-                      <td className="px-6 py-4 text-gray-600 capitalize">{aluno.genero ?? '—'}</td>
-                      <td className="px-6 py-4 text-gray-600">{aluno.telefone ?? '—'}</td>
-                      <td className="px-6 py-4">
-                        <TagsObjetivo objetivos={aluno.objetivos_especificos} />
-                      </td>
-                      <td className="px-6 py-4 text-gray-600">{idade !== null ? `${idade} anos` : '—'}</td>
-                      <td className="px-6 py-4 text-gray-500">
-                        {new Date(aluno.data_cadastro).toLocaleDateString('pt-BR')}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex gap-2">
-                          <Link href={`/alunos/${aluno.id}/editar?from=consulta`} className="text-xs px-3 py-1 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors">
-                            Editar
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="text-left px-4 py-3 text-gray-600 font-semibold whitespace-nowrap">Nome</th>
+                    <th className="text-left px-4 py-3 text-gray-600 font-semibold whitespace-nowrap">Gênero</th>
+                    <th className="text-left px-4 py-3 text-gray-600 font-semibold whitespace-nowrap">Telefone</th>
+                    <th className="text-left px-4 py-3 text-gray-600 font-semibold whitespace-nowrap">Objetivos</th>
+                    <th className="text-left px-4 py-3 text-gray-600 font-semibold whitespace-nowrap">Plano</th>
+                    {mostrarValores && (
+                      <th className="text-left px-4 py-3 text-gray-600 font-semibold whitespace-nowrap">Valor</th>
+                    )}
+                    <th className="text-left px-4 py-3 text-gray-600 font-semibold whitespace-nowrap">Idade</th>
+                    <th className="text-left px-4 py-3 text-gray-600 font-semibold whitespace-nowrap">Cadastro</th>
+                    <th className="text-left px-4 py-3 text-gray-600 font-semibold whitespace-nowrap">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {filtrados.map(aluno => {
+                    const idade = calcularIdade(aluno.data_nascimento)
+                    return (
+                      <tr key={aluno.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-3 font-medium">
+                          <Link href={`/alunos/${aluno.id}`} className="text-blue-600 hover:underline">
+                            {aluno.nome}
                           </Link>
-                          <button onClick={() => handleExcluir(aluno.id, aluno.nome)} className="text-xs px-3 py-1 rounded-lg border border-red-300 text-red-600 hover:bg-red-50 transition-colors">
-                            Excluir
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 capitalize">{aluno.genero ?? '—'}</td>
+                        <td className="px-4 py-3 text-gray-600">{aluno.telefone ?? '—'}</td>
+                        <td className="px-4 py-3">
+                          <TagsObjetivo objetivos={aluno.objetivos_especificos} />
+                        </td>
+                        <td className="px-4 py-3">
+                          {editandoPlanoId === aluno.id ? (
+                            <div className="flex items-center gap-1.5">
+                              <select
+                                value={planoEditSelecionado}
+                                onChange={e => setPlanoEditSelecionado(e.target.value)}
+                                autoFocus
+                                className="rounded-lg border border-blue-400 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              >
+                                <option value="">Sem plano</option>
+                                {catalogoPlanos.map(p => (
+                                  <option key={p.id} value={p.id}>{p.nome}</option>
+                                ))}
+                              </select>
+                              <button
+                                onClick={() => handleSalvarPlano(aluno.id)}
+                                disabled={isPendingPlano}
+                                className="text-xs px-2 py-1 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                              >
+                                {isPendingPlano ? '...' : 'Salvar'}
+                              </button>
+                              <button
+                                onClick={cancelarEdicaoPlano}
+                                className="text-xs px-2 py-1 rounded-lg border border-gray-300 text-gray-500 hover:bg-gray-50 transition-colors"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <span className="text-gray-700">{aluno.planos?.nome ?? '—'}</span>
+                              <button
+                                onClick={() => iniciarEdicaoPlano(aluno)}
+                                className="text-xs text-blue-500 hover:text-blue-700 hover:underline transition-colors shrink-0"
+                              >
+                                Editar
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                        {mostrarValores && (
+                          <td className="px-4 py-3 font-semibold text-gray-800">
+                            {aluno.planos ? formatarMoeda(aluno.planos.valor) : '—'}
+                          </td>
+                        )}
+                        <td className="px-4 py-3 text-gray-600">{idade !== null ? `${idade} anos` : '—'}</td>
+                        <td className="px-4 py-3 text-gray-500">
+                          {new Date(aluno.data_cadastro).toLocaleDateString('pt-BR')}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex gap-2">
+                            <Link href={`/alunos/${aluno.id}/editar?from=consulta`} className="text-xs px-3 py-1 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors">
+                              Editar
+                            </Link>
+                            <button onClick={() => handleExcluir(aluno.id, aluno.nome)} className="text-xs px-3 py-1 rounded-lg border border-red-300 text-red-600 hover:bg-red-50 transition-colors">
+                              Excluir
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {mostrarValores && (
+              <div className="px-4 py-3 bg-gray-50 border-t-2 border-gray-200 flex items-center justify-between">
+                <span className="text-sm text-gray-500">
+                  Total em planos ({filtrados.filter(a => a.planos).length} aluno(s) com plano)
+                </span>
+                <span className="text-base font-bold text-gray-900">{formatarMoeda(totalPlanos)}</span>
+              </div>
+            )}
           </div>
         ) : (
           <div className="flex flex-col gap-3">
@@ -247,6 +366,7 @@ export default function ConsultaPage() {
                     </Link>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-gray-500">
                       {aluno.genero && <span className="capitalize">⚧ {aluno.genero}</span>}
+                      {aluno.planos && <span>📋 {aluno.planos.nome}</span>}
                       {aluno.telefone && <span>📱 {aluno.telefone}</span>}
                       {idade !== null && <span>🎂 {idade} anos</span>}
                       <span>📅 {new Date(aluno.data_cadastro).toLocaleDateString('pt-BR')}</span>

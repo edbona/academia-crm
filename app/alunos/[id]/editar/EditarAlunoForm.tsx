@@ -14,7 +14,10 @@ type Aluno = {
   genero: string | null
   objetivo_geral: string | null
   objetivos_especificos: string[] | null
+  plano_id: number | null
 }
+
+type PlanoOpcao = { id: number; nome: string; valor: number }
 
 type Estado = { tipo: 'erro'; mensagem: string } | { tipo: 'sucesso' } | null
 
@@ -28,19 +31,21 @@ export default function EditarAlunoForm({ aluno, origem }: { aluno: Aluno; orige
     new Set(aluno.objetivos_especificos ?? [])
   )
   const [inputNovo, setInputNovo] = useState('')
+  const [planos, setPlanos] = useState<PlanoOpcao[]>([])
+  const [planoSelecionadoId, setPlanoSelecionadoId] = useState(aluno.plano_id?.toString() ?? '')
 
   useEffect(() => {
-    supabase
-      .from('objetivos_catalogo')
-      .select('nome')
-      .order('nome')
-      .then(({ data }) => {
-        const catalogoNomes = data?.map(d => d.nome) ?? []
-        const existentes = aluno.objetivos_especificos ?? []
-        const fora = existentes.filter(o => !catalogoNomes.includes(o))
-        setCatalogo(catalogoNomes)
-        setExtras(fora)
-      })
+    Promise.all([
+      supabase.from('objetivos_catalogo').select('nome').order('nome'),
+      supabase.from('planos').select('id, nome, valor').eq('ativo', true).order('criado_em'),
+    ]).then(([{ data: catalogoData }, { data: planosData }]) => {
+      const catalogoNomes = catalogoData?.map(d => d.nome) ?? []
+      const existentes = aluno.objetivos_especificos ?? []
+      const fora = existentes.filter(o => !catalogoNomes.includes(o))
+      setCatalogo(catalogoNomes)
+      setExtras(fora)
+      setPlanos(planosData ?? [])
+    })
   }, [aluno.objetivos_especificos])
 
   const todosObjetivos = [...catalogo, ...extras]
@@ -72,6 +77,7 @@ export default function EditarAlunoForm({ aluno, origem }: { aluno: Aluno; orige
 
       <form action={action} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <input type="hidden" name="origem" value={origem} />
+        <input type="hidden" name="plano_id" value={planoSelecionadoId} />
         {[...selecionados].map(obj => (
           <input type="hidden" name="objetivos_especificos" value={obj} key={obj} />
         ))}
@@ -100,6 +106,22 @@ export default function EditarAlunoForm({ aluno, origem }: { aluno: Aluno; orige
             <option value="masculino">Masculino</option>
             <option value="feminino">Feminino</option>
             <option value="outro">Outro</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Plano de Adesão</label>
+          <select
+            value={planoSelecionadoId}
+            onChange={e => setPlanoSelecionadoId(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Sem plano</option>
+            {planos.map(p => (
+              <option key={p.id} value={p.id}>
+                {p.nome}{p.valor > 0 ? ` — R$ ${p.valor.toFixed(2).replace('.', ',')}` : ''}
+              </option>
+            ))}
           </select>
         </div>
 
