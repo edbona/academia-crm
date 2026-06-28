@@ -87,6 +87,7 @@ export default function ConsultaPage() {
   const [objetivoFiltro, setObjetivoFiltro] = useState('')
   const [generoFiltro, setGeneroFiltro] = useState('')
   const [profissionalFiltro, setProfissionalFiltro] = useState('')
+  const [filtroExclusivo, setFiltroExclusivo] = useState(false)
   const [idadeMin, setIdadeMin] = useState('')
   const [idadeMax, setIdadeMax] = useState('')
   const [modo, setModo] = useState<'lista' | 'tabela'>('tabela')
@@ -127,15 +128,18 @@ export default function ConsultaPage() {
       const nomeOk = aluno.nome.toLowerCase().includes(busca.toLowerCase())
       const objOk = !objetivoFiltro || (aluno.objetivos_especificos ?? []).includes(objetivoFiltro)
       const generoOk = !generoFiltro || aluno.genero === generoFiltro
-      const profOk = !profissionalFiltro ||
-        aluno.aluno_profissionais.some(ap => ap.profissional_id === Number(profissionalFiltro))
+      const profOk = !profissionalFiltro || (
+        filtroExclusivo
+          ? aluno.aluno_profissionais.length === 1 && aluno.aluno_profissionais[0].profissional_id === Number(profissionalFiltro)
+          : aluno.aluno_profissionais.some(ap => ap.profissional_id === Number(profissionalFiltro))
+      )
       const idade = calcularIdade(aluno.data_nascimento)
       const idadeOk =
         (min === null || (idade !== null && idade >= min)) &&
         (max === null || (idade !== null && idade <= max))
       return nomeOk && objOk && generoOk && profOk && idadeOk
     })
-  }, [alunos, busca, objetivoFiltro, generoFiltro, profissionalFiltro, idadeMin, idadeMax])
+  }, [alunos, busca, objetivoFiltro, generoFiltro, profissionalFiltro, filtroExclusivo, idadeMin, idadeMax])
 
   const totalPlanos = useMemo(
     () => filtrados.reduce((sum, a) => sum + (a.planos?.valor ?? 0), 0),
@@ -293,7 +297,7 @@ export default function ConsultaPage() {
             <label className="block text-xs font-medium text-gray-500 mb-1">Profissional</label>
             <select
               value={profissionalFiltro}
-              onChange={e => setProfissionalFiltro(e.target.value)}
+              onChange={e => { setProfissionalFiltro(e.target.value); setFiltroExclusivo(false) }}
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Todos os profissionais</option>
@@ -301,6 +305,17 @@ export default function ConsultaPage() {
                 <option key={p.id} value={p.id}>{p.nome}</option>
               ))}
             </select>
+            {profissionalFiltro && (
+              <label className="flex items-center gap-2 mt-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={filtroExclusivo}
+                  onChange={e => setFiltroExclusivo(e.target.checked)}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-xs text-gray-600">Somente exclusivo</span>
+              </label>
+            )}
           </div>
         </div>
 
