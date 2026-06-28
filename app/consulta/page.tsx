@@ -192,6 +192,7 @@ export default function ConsultaPage() {
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="text-left px-6 py-3 text-gray-600 font-semibold">Nome</th>
+                  <th className="text-left px-6 py-3 text-gray-600 font-semibold">Gênero</th>
                   <th className="text-left px-6 py-3 text-gray-600 font-semibold">Telefone</th>
                   <th className="text-left px-6 py-3 text-gray-600 font-semibold">Objetivos Específicos</th>
                   <th className="text-left px-6 py-3 text-gray-600 font-semibold">Idade</th>
@@ -209,6 +210,7 @@ export default function ConsultaPage() {
                           {aluno.nome}
                         </Link>
                       </td>
+                      <td className="px-6 py-4 text-gray-600 capitalize">{aluno.genero ?? '—'}</td>
                       <td className="px-6 py-4 text-gray-600">{aluno.telefone ?? '—'}</td>
                       <td className="px-6 py-4">
                         <TagsObjetivo objetivos={aluno.objetivos_especificos} />
@@ -244,6 +246,7 @@ export default function ConsultaPage() {
                       {aluno.nome}
                     </Link>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-gray-500">
+                      {aluno.genero && <span className="capitalize">⚧ {aluno.genero}</span>}
                       {aluno.telefone && <span>📱 {aluno.telefone}</span>}
                       {idade !== null && <span>🎂 {idade} anos</span>}
                       <span>📅 {new Date(aluno.data_cadastro).toLocaleDateString('pt-BR')}</span>
