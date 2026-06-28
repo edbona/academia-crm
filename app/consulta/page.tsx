@@ -385,92 +385,12 @@ export default function ConsultaPage() {
                           <TagsObjetivo objetivos={aluno.objetivos_especificos} />
                         </td>
 
-                        {/* Profissional(is) com edição inline */}
                         <td className="px-4 py-3">
-                          {editandoProfissionalId === aluno.id ? (
-                            <div className="flex flex-col gap-2">
-                              <div className="flex flex-col gap-1">
-                                {catalogoProfissionais.map(p => (
-                                  <label key={p.id} className="flex items-center gap-2 text-xs cursor-pointer">
-                                    <input
-                                      type="checkbox"
-                                      checked={profissionaisEditSelecionados.has(p.id)}
-                                      onChange={() => toggleProfissionalEdit(p.id)}
-                                      className="rounded border-gray-300 text-blue-600"
-                                    />
-                                    <span>{p.nome}</span>
-                                  </label>
-                                ))}
-                              </div>
-                              <div className="flex gap-1">
-                                <button
-                                  onClick={() => handleSalvarProfissional(aluno.id)}
-                                  disabled={isPendingProfissional}
-                                  className="text-xs px-2 py-1 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                                >
-                                  {isPendingProfissional ? '...' : 'Salvar'}
-                                </button>
-                                <button
-                                  onClick={cancelarEdicaoProfissional}
-                                  className="text-xs px-2 py-1 rounded-lg border border-gray-300 text-gray-500 hover:bg-gray-50 transition-colors"
-                                >
-                                  ✕
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="flex items-start gap-2">
-                              <TagsProfissional profs={aluno.aluno_profissionais} />
-                              <button
-                                onClick={() => iniciarEdicaoProfissional(aluno)}
-                                className="text-xs text-blue-500 hover:text-blue-700 hover:underline transition-colors shrink-0 mt-0.5"
-                              >
-                                Editar
-                              </button>
-                            </div>
-                          )}
+                          <TagsProfissional profs={aluno.aluno_profissionais} />
                         </td>
 
-                        {/* Plano com edição inline */}
-                        <td className="px-4 py-3">
-                          {editandoPlanoId === aluno.id ? (
-                            <div className="flex items-center gap-1.5">
-                              <select
-                                value={planoEditSelecionado}
-                                onChange={e => setPlanoEditSelecionado(e.target.value)}
-                                autoFocus
-                                className="rounded-lg border border-blue-400 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              >
-                                <option value="">Sem plano</option>
-                                {catalogoPlanos.map(p => (
-                                  <option key={p.id} value={p.id}>{p.nome}</option>
-                                ))}
-                              </select>
-                              <button
-                                onClick={() => handleSalvarPlano(aluno.id)}
-                                disabled={isPendingPlano}
-                                className="text-xs px-2 py-1 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                              >
-                                {isPendingPlano ? '...' : 'Salvar'}
-                              </button>
-                              <button
-                                onClick={cancelarEdicaoPlano}
-                                className="text-xs px-2 py-1 rounded-lg border border-gray-300 text-gray-500 hover:bg-gray-50 transition-colors"
-                              >
-                                ✕
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-2">
-                              <span className="text-gray-700">{aluno.planos?.nome ?? '—'}</span>
-                              <button
-                                onClick={() => iniciarEdicaoPlano(aluno)}
-                                className="text-xs text-blue-500 hover:text-blue-700 hover:underline transition-colors shrink-0"
-                              >
-                                Editar
-                              </button>
-                            </div>
-                          )}
+                        <td className="px-4 py-3 text-gray-700">
+                          {aluno.planos?.nome ?? '—'}
                         </td>
 
                         {mostrarValores && (
