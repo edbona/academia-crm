@@ -30,6 +30,7 @@ type Aluno = {
   plano_id: number | null
   planos: PlanoInfo | null
   profissional_id: number | null
+  profissional_misto: boolean
   profissionais: ProfissionalInfo | null
 }
 
@@ -110,7 +111,7 @@ export default function ConsultaPage() {
       const nomeOk = aluno.nome.toLowerCase().includes(busca.toLowerCase())
       const objOk = !objetivoFiltro || (aluno.objetivos_especificos ?? []).includes(objetivoFiltro)
       const generoOk = !generoFiltro || aluno.genero === generoFiltro
-      const profOk = !profissionalFiltro || aluno.profissional_id === Number(profissionalFiltro)
+      const profOk = !profissionalFiltro || aluno.profissional_misto || aluno.profissional_id === Number(profissionalFiltro)
       const idade = calcularIdade(aluno.data_nascimento)
       const idadeOk =
         (min === null || (idade !== null && idade >= min)) &&
@@ -158,7 +159,7 @@ export default function ConsultaPage() {
 
   function iniciarEdicaoProfissional(aluno: Aluno) {
     setEditandoProfissionalId(aluno.id)
-    setProfissionalEditSelecionado(aluno.profissional_id?.toString() ?? '')
+    setProfissionalEditSelecionado(aluno.profissional_misto ? 'misto' : (aluno.profissional_id?.toString() ?? ''))
     setEditandoPlanoId(null)
   }
 
@@ -168,13 +169,18 @@ export default function ConsultaPage() {
   }
 
   function handleSalvarProfissional(alunoId: number) {
-    const profId = profissionalEditSelecionado ? Number(profissionalEditSelecionado) : null
+    const val = profissionalEditSelecionado
+    const profId: number | 'misto' | null = val === 'misto' ? 'misto' : (val ? Number(val) : null)
     startProfissional(async () => {
       const resultado = await atualizarProfissionalAluno(alunoId, profId)
       if (!resultado.erro) {
-        const profInfo = profId ? (catalogoProfissionais.find(p => p.id === profId) ?? null) : null
+        const misto = profId === 'misto'
+        const numId = misto ? null : (profId as number | null)
+        const profInfo = numId ? (catalogoProfissionais.find(p => p.id === numId) ?? null) : null
         setAlunos(prev => prev.map(a =>
-          a.id === alunoId ? { ...a, profissional_id: profId, profissionais: profInfo } : a
+          a.id === alunoId
+            ? { ...a, profissional_id: numId, profissional_misto: misto, profissionais: profInfo }
+            : a
         ))
         setEditandoProfissionalId(null)
         setProfissionalEditSelecionado('')
@@ -352,6 +358,7 @@ export default function ConsultaPage() {
                                 className="rounded-lg border border-blue-400 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                               >
                                 <option value="">Sem profissional</option>
+                                <option value="misto">Misto</option>
                                 {catalogoProfissionais.map(p => (
                                   <option key={p.id} value={p.id}>{p.nome}</option>
                                 ))}
@@ -372,7 +379,11 @@ export default function ConsultaPage() {
                             </div>
                           ) : (
                             <div className="flex items-center gap-2">
-                              <span className="text-gray-700">{aluno.profissionais?.nome ?? '—'}</span>
+                              {aluno.profissional_misto ? (
+                                <span className="inline-block bg-purple-50 text-purple-700 text-xs px-2 py-0.5 rounded-full font-medium">Misto</span>
+                              ) : (
+                                <span className="text-gray-700">{aluno.profissionais?.nome ?? '—'}</span>
+                              )}
                               <button
                                 onClick={() => iniciarEdicaoProfissional(aluno)}
                                 className="text-xs text-blue-500 hover:text-blue-700 hover:underline transition-colors shrink-0"
@@ -471,7 +482,10 @@ export default function ConsultaPage() {
                     </Link>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-gray-500">
                       {aluno.genero && <span className="capitalize">⚧ {aluno.genero}</span>}
-                      {aluno.profissionais && <span>👤 {aluno.profissionais.nome}</span>}
+                      {aluno.profissional_misto
+                        ? <span>👤 Misto</span>
+                        : aluno.profissionais && <span>👤 {aluno.profissionais.nome}</span>
+                      }
                       {aluno.planos && <span>📋 {aluno.planos.nome}</span>}
                       {aluno.telefone && <span>📱 {aluno.telefone}</span>}
                       {idade !== null && <span>🎂 {idade} anos</span>}
