@@ -29,10 +29,6 @@ export async function criarAluno(prevState: Estado, formData: FormData): Promise
   const planoIdStr = formData.get('plano_id') as string
   const plano_id = planoIdStr ? Number(planoIdStr) : null
 
-  const profIdStr = formData.get('profissional_id') as string
-  const profissional_misto = profIdStr === 'misto'
-  const profissional_id = !profissional_misto && profIdStr ? Number(profIdStr) : null
-
   const { error } = await supabase.from('alunos').insert({
     nome,
     telefone: (formData.get('telefone') as string) || null,
@@ -43,8 +39,7 @@ export async function criarAluno(prevState: Estado, formData: FormData): Promise
     objetivo_geral: (formData.get('objetivo_geral') as string) || null,
     objetivos_especificos: objetivosEspecificos,
     plano_id,
-    profissional_id,
-    profissional_misto,
+    profissional_id: (formData.get('profissional_id') as string) ? Number(formData.get('profissional_id')) : null,
   })
 
   if (error) {
@@ -68,10 +63,6 @@ export async function atualizarAluno(id: number, prevState: Estado, formData: Fo
   const planoIdStr = formData.get('plano_id') as string
   const plano_id = planoIdStr ? Number(planoIdStr) : null
 
-  const profIdStr = formData.get('profissional_id') as string
-  const profissional_misto = profIdStr === 'misto'
-  const profissional_id = !profissional_misto && profIdStr ? Number(profIdStr) : null
-
   const { error } = await supabase
     .from('alunos')
     .update({
@@ -84,8 +75,7 @@ export async function atualizarAluno(id: number, prevState: Estado, formData: Fo
       objetivo_geral: (formData.get('objetivo_geral') as string) || null,
       objetivos_especificos: objetivosEspecificos,
       plano_id,
-      profissional_id,
-      profissional_misto,
+      profissional_id: (formData.get('profissional_id') as string) ? Number(formData.get('profissional_id')) : null,
     })
     .eq('id', id)
 
@@ -99,14 +89,10 @@ export async function atualizarAluno(id: number, prevState: Estado, formData: Fo
   redirect(destino)
 }
 
-export async function atualizarProfissionalAluno(alunoId: number, profissionalId: number | 'misto' | null): Promise<{ erro?: string }> {
-  const misto = profissionalId === 'misto'
+export async function atualizarProfissionalAluno(alunoId: number, profissionalId: number | null): Promise<{ erro?: string }> {
   const { error } = await supabase
     .from('alunos')
-    .update({
-      profissional_id: misto ? null : profissionalId,
-      profissional_misto: misto,
-    })
+    .update({ profissional_id: profissionalId })
     .eq('id', alunoId)
   if (error) return { erro: error.message }
   revalidatePath('/consulta')

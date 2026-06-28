@@ -17,7 +17,6 @@ type Aluno = {
   plano_id: number | null
   cpf: string | null
   profissional_id: number | null
-  profissional_misto: boolean
 }
 
 type PlanoOpcao = { id: number; nome: string; valor: number }
@@ -38,9 +37,7 @@ export default function EditarAlunoForm({ aluno, origem }: { aluno: Aluno; orige
   const [planos, setPlanos] = useState<PlanoOpcao[]>([])
   const [planoSelecionadoId, setPlanoSelecionadoId] = useState(aluno.plano_id?.toString() ?? '')
   const [profissionais, setProfissionais] = useState<ProfissionalOpcao[]>([])
-  const [profissionalSelecionadoId, setProfissionalSelecionadoId] = useState(
-    aluno.profissional_misto ? 'misto' : (aluno.profissional_id?.toString() ?? '')
-  )
+  const [profissionalSelecionadoId, setProfissionalSelecionadoId] = useState(aluno.profissional_id?.toString() ?? '')
 
   useEffect(() => {
     Promise.all([
@@ -144,7 +141,6 @@ export default function EditarAlunoForm({ aluno, origem }: { aluno: Aluno; orige
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">Sem profissional</option>
-            <option value="misto">Misto (todos os profissionais)</option>
             {profissionais.map(p => (
               <option key={p.id} value={p.id}>{p.nome}</option>
             ))}
