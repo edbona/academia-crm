@@ -41,13 +41,6 @@ function TagsObjetivo({ objetivos }: { objetivos: string[] | null }) {
   )
 }
 
-const FAIXAS = [
-  { label: 'Todas as idades', min: 0, max: 999 },
-  { label: '18 – 25 anos', min: 18, max: 25 },
-  { label: '26 – 35 anos', min: 26, max: 35 },
-  { label: '36 – 45 anos', min: 36, max: 45 },
-  { label: '46+ anos', min: 46, max: 999 },
-]
 
 export default function ConsultaPage() {
   const [alunos, setAlunos] = useState<Aluno[]>([])
@@ -55,7 +48,8 @@ export default function ConsultaPage() {
   const [carregando, setCarregando] = useState(true)
   const [busca, setBusca] = useState('')
   const [objetivoFiltro, setObjetivoFiltro] = useState('')
-  const [faixaLabel, setFaixaLabel] = useState('Todas as idades')
+  const [idadeMin, setIdadeMin] = useState('')
+  const [idadeMax, setIdadeMax] = useState('')
   const [modo, setModo] = useState<'lista' | 'tabela'>('tabela')
 
   useEffect(() => {
@@ -69,9 +63,10 @@ export default function ConsultaPage() {
     })
   }, [])
 
-  const faixa = FAIXAS.find(f => f.label === faixaLabel) ?? FAIXAS[0]
-
   const filtrados = useMemo(() => {
+    const min = idadeMin !== '' ? Number(idadeMin) : null
+    const max = idadeMax !== '' ? Number(idadeMax) : null
+
     return alunos.filter(aluno => {
       const nomeOk = aluno.nome.toLowerCase().includes(busca.toLowerCase())
       const objOk =
@@ -79,11 +74,11 @@ export default function ConsultaPage() {
         (aluno.objetivos_especificos ?? []).includes(objetivoFiltro)
       const idade = calcularIdade(aluno.data_nascimento)
       const idadeOk =
-        faixa.min === 0 ||
-        (idade !== null && idade >= faixa.min && idade <= faixa.max)
+        (min === null || (idade !== null && idade >= min)) &&
+        (max === null || (idade !== null && idade <= max))
       return nomeOk && objOk && idadeOk
     })
-  }, [alunos, busca, objetivoFiltro, faixa])
+  }, [alunos, busca, objetivoFiltro, idadeMin, idadeMax])
 
   async function handleExcluir(id: number, nome: string) {
     if (!confirm(`Tem certeza que deseja excluir ${nome}? Esta ação não pode ser desfeita.`)) return
@@ -133,15 +128,27 @@ export default function ConsultaPage() {
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Faixa de idade</label>
-            <select
-              value={faixaLabel}
-              onChange={e => setFaixaLabel(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {FAIXAS.map(f => (
-                <option key={f.label} value={f.label}>{f.label}</option>
-              ))}
-            </select>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min={0}
+                max={120}
+                placeholder="De"
+                value={idadeMin}
+                onChange={e => setIdadeMin(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <span className="text-gray-400 text-sm shrink-0">até</span>
+              <input
+                type="number"
+                min={0}
+                max={120}
+                placeholder="Até"
+                value={idadeMax}
+                onChange={e => setIdadeMax(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
           </div>
         </div>
 
