@@ -3,12 +3,17 @@
 import { useState, useEffect, useMemo, useTransition } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
-import { excluirAlunoConsulta, atualizarPlanoAluno } from '@/app/alunos/actions'
+import { excluirAlunoConsulta, atualizarPlanoAluno, atualizarProfissionalAluno } from '@/app/alunos/actions'
 
 type PlanoInfo = {
   id: number
   nome: string
   valor: number
+}
+
+type ProfissionalInfo = {
+  id: number
+  nome: string
 }
 
 type Aluno = {
@@ -24,6 +29,8 @@ type Aluno = {
   data_cadastro: string
   plano_id: number | null
   planos: PlanoInfo | null
+  profissional_id: number | null
+  profissionais: ProfissionalInfo | null
 }
 
 function calcularIdade(dataNascimento: string | null): number | null {
@@ -57,27 +64,40 @@ export default function ConsultaPage() {
   const [alunos, setAlunos] = useState<Aluno[]>([])
   const [catalogo, setCatalogo] = useState<string[]>([])
   const [catalogoPlanos, setCatalogoPlanos] = useState<PlanoInfo[]>([])
+  const [catalogoProfissionais, setCatalogoProfissionais] = useState<ProfissionalInfo[]>([])
   const [carregando, setCarregando] = useState(true)
   const [busca, setBusca] = useState('')
   const [objetivoFiltro, setObjetivoFiltro] = useState('')
   const [generoFiltro, setGeneroFiltro] = useState('')
+  const [profissionalFiltro, setProfissionalFiltro] = useState('')
   const [idadeMin, setIdadeMin] = useState('')
   const [idadeMax, setIdadeMax] = useState('')
   const [modo, setModo] = useState<'lista' | 'tabela'>('tabela')
   const [mostrarValores, setMostrarValores] = useState(true)
+
   const [editandoPlanoId, setEditandoPlanoId] = useState<number | null>(null)
   const [planoEditSelecionado, setPlanoEditSelecionado] = useState('')
   const [isPendingPlano, startPlano] = useTransition()
 
+  const [editandoProfissionalId, setEditandoProfissionalId] = useState<number | null>(null)
+  const [profissionalEditSelecionado, setProfissionalEditSelecionado] = useState('')
+  const [isPendingProfissional, startProfissional] = useTransition()
+
   useEffect(() => {
     Promise.all([
-      supabase.from('alunos').select('*, planos!plano_id(id, nome, valor)').eq('ativo', true).order('nome'),
+      supabase
+        .from('alunos')
+        .select('*, planos!plano_id(id, nome, valor), profissionais!profissional_id(id, nome)')
+        .eq('ativo', true)
+        .order('nome'),
       supabase.from('objetivos_catalogo').select('nome').order('nome'),
       supabase.from('planos').select('id, nome, valor').eq('ativo', true).order('criado_em'),
-    ]).then(([{ data: alunosData }, { data: catalogoData }, { data: planosData }]) => {
+      supabase.from('profissionais').select('id, nome').eq('ativo', true).order('nome'),
+    ]).then(([{ data: alunosData }, { data: catalogoData }, { data: planosData }, { data: profData }]) => {
       setAlunos((alunosData ?? []) as Aluno[])
       setCatalogo(catalogoData?.map(d => d.nome) ?? [])
       setCatalogoPlanos(planosData ?? [])
+      setCatalogoProfissionais(profData ?? [])
       setCarregando(false)
     })
   }, [])
@@ -88,17 +108,16 @@ export default function ConsultaPage() {
 
     return alunos.filter(aluno => {
       const nomeOk = aluno.nome.toLowerCase().includes(busca.toLowerCase())
-      const objOk =
-        !objetivoFiltro ||
-        (aluno.objetivos_especificos ?? []).includes(objetivoFiltro)
+      const objOk = !objetivoFiltro || (aluno.objetivos_especificos ?? []).includes(objetivoFiltro)
       const generoOk = !generoFiltro || aluno.genero === generoFiltro
+      const profOk = !profissionalFiltro || aluno.profissional_id === Number(profissionalFiltro)
       const idade = calcularIdade(aluno.data_nascimento)
       const idadeOk =
         (min === null || (idade !== null && idade >= min)) &&
         (max === null || (idade !== null && idade <= max))
-      return nomeOk && objOk && generoOk && idadeOk
+      return nomeOk && objOk && generoOk && profOk && idadeOk
     })
-  }, [alunos, busca, objetivoFiltro, generoFiltro, idadeMin, idadeMax])
+  }, [alunos, busca, objetivoFiltro, generoFiltro, profissionalFiltro, idadeMin, idadeMax])
 
   const totalPlanos = useMemo(
     () => filtrados.reduce((sum, a) => sum + (a.planos?.valor ?? 0), 0),
@@ -114,6 +133,7 @@ export default function ConsultaPage() {
   function iniciarEdicaoPlano(aluno: Aluno) {
     setEditandoPlanoId(aluno.id)
     setPlanoEditSelecionado(aluno.plano_id?.toString() ?? '')
+    setEditandoProfissionalId(null)
   }
 
   function cancelarEdicaoPlano() {
@@ -136,6 +156,32 @@ export default function ConsultaPage() {
     })
   }
 
+  function iniciarEdicaoProfissional(aluno: Aluno) {
+    setEditandoProfissionalId(aluno.id)
+    setProfissionalEditSelecionado(aluno.profissional_id?.toString() ?? '')
+    setEditandoPlanoId(null)
+  }
+
+  function cancelarEdicaoProfissional() {
+    setEditandoProfissionalId(null)
+    setProfissionalEditSelecionado('')
+  }
+
+  function handleSalvarProfissional(alunoId: number) {
+    const profId = profissionalEditSelecionado ? Number(profissionalEditSelecionado) : null
+    startProfissional(async () => {
+      const resultado = await atualizarProfissionalAluno(alunoId, profId)
+      if (!resultado.erro) {
+        const profInfo = profId ? (catalogoProfissionais.find(p => p.id === profId) ?? null) : null
+        setAlunos(prev => prev.map(a =>
+          a.id === alunoId ? { ...a, profissional_id: profId, profissionais: profInfo } : a
+        ))
+        setEditandoProfissionalId(null)
+        setProfissionalEditSelecionado('')
+      }
+    })
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 py-10">
@@ -153,7 +199,7 @@ export default function ConsultaPage() {
         </div>
 
         {/* Filtros */}
-        <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Buscar por nome</label>
             <input
@@ -214,6 +260,19 @@ export default function ConsultaPage() {
               />
             </div>
           </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Profissional</label>
+            <select
+              value={profissionalFiltro}
+              onChange={e => setProfissionalFiltro(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Todos os profissionais</option>
+              {catalogoProfissionais.map(p => (
+                <option key={p.id} value={p.id}>{p.nome}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {/* Controles de visualização */}
@@ -256,6 +315,7 @@ export default function ConsultaPage() {
                     <th className="text-left px-4 py-3 text-gray-600 font-semibold whitespace-nowrap">Gênero</th>
                     <th className="text-left px-4 py-3 text-gray-600 font-semibold whitespace-nowrap">Telefone</th>
                     <th className="text-left px-4 py-3 text-gray-600 font-semibold whitespace-nowrap">Objetivos</th>
+                    <th className="text-left px-4 py-3 text-gray-600 font-semibold whitespace-nowrap">Profissional</th>
                     <th className="text-left px-4 py-3 text-gray-600 font-semibold whitespace-nowrap">Plano</th>
                     {mostrarValores && (
                       <th className="text-left px-4 py-3 text-gray-600 font-semibold whitespace-nowrap">Valor</th>
@@ -280,6 +340,50 @@ export default function ConsultaPage() {
                         <td className="px-4 py-3">
                           <TagsObjetivo objetivos={aluno.objetivos_especificos} />
                         </td>
+
+                        {/* Profissional com edição inline */}
+                        <td className="px-4 py-3">
+                          {editandoProfissionalId === aluno.id ? (
+                            <div className="flex items-center gap-1.5">
+                              <select
+                                value={profissionalEditSelecionado}
+                                onChange={e => setProfissionalEditSelecionado(e.target.value)}
+                                autoFocus
+                                className="rounded-lg border border-blue-400 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              >
+                                <option value="">Sem profissional</option>
+                                {catalogoProfissionais.map(p => (
+                                  <option key={p.id} value={p.id}>{p.nome}</option>
+                                ))}
+                              </select>
+                              <button
+                                onClick={() => handleSalvarProfissional(aluno.id)}
+                                disabled={isPendingProfissional}
+                                className="text-xs px-2 py-1 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                              >
+                                {isPendingProfissional ? '...' : 'Salvar'}
+                              </button>
+                              <button
+                                onClick={cancelarEdicaoProfissional}
+                                className="text-xs px-2 py-1 rounded-lg border border-gray-300 text-gray-500 hover:bg-gray-50 transition-colors"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <span className="text-gray-700">{aluno.profissionais?.nome ?? '—'}</span>
+                              <button
+                                onClick={() => iniciarEdicaoProfissional(aluno)}
+                                className="text-xs text-blue-500 hover:text-blue-700 hover:underline transition-colors shrink-0"
+                              >
+                                Editar
+                              </button>
+                            </div>
+                          )}
+                        </td>
+
+                        {/* Plano com edição inline */}
                         <td className="px-4 py-3">
                           {editandoPlanoId === aluno.id ? (
                             <div className="flex items-center gap-1.5">
@@ -320,6 +424,7 @@ export default function ConsultaPage() {
                             </div>
                           )}
                         </td>
+
                         {mostrarValores && (
                           <td className="px-4 py-3 font-semibold text-gray-800">
                             {aluno.planos ? formatarMoeda(aluno.planos.valor) : '—'}
@@ -366,6 +471,7 @@ export default function ConsultaPage() {
                     </Link>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-gray-500">
                       {aluno.genero && <span className="capitalize">⚧ {aluno.genero}</span>}
+                      {aluno.profissionais && <span>👤 {aluno.profissionais.nome}</span>}
                       {aluno.planos && <span>📋 {aluno.planos.nome}</span>}
                       {aluno.telefone && <span>📱 {aluno.telefone}</span>}
                       {idade !== null && <span>🎂 {idade} anos</span>}

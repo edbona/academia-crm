@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase'
 type Estado = { tipo: 'erro'; mensagem: string } | { tipo: 'sucesso' } | null
 
 type PlanoOpcao = { id: number; nome: string; valor: number }
+type ProfissionalOpcao = { id: number; nome: string }
 
 export default function NovoAlunoForm() {
   const [estado, action, pending] = useActionState<Estado, FormData>(criarAluno, null)
@@ -18,6 +19,8 @@ export default function NovoAlunoForm() {
   const [inputNovo, setInputNovo] = useState('')
   const [planos, setPlanos] = useState<PlanoOpcao[]>([])
   const [planoSelecionadoId, setPlanoSelecionadoId] = useState('')
+  const [profissionais, setProfissionais] = useState<ProfissionalOpcao[]>([])
+  const [profissionalSelecionadoId, setProfissionalSelecionadoId] = useState('')
 
   const todosObjetivos = [...catalogo, ...extras]
 
@@ -25,9 +28,11 @@ export default function NovoAlunoForm() {
     Promise.all([
       supabase.from('objetivos_catalogo').select('nome').order('nome'),
       supabase.from('planos').select('id, nome, valor').eq('ativo', true).order('criado_em'),
-    ]).then(([{ data: catalogoData }, { data: planosData }]) => {
+      supabase.from('profissionais').select('id, nome').eq('ativo', true).order('nome'),
+    ]).then(([{ data: catalogoData }, { data: planosData }, { data: profData }]) => {
       setCatalogo(catalogoData?.map(d => d.nome) ?? [])
       setPlanos(planosData ?? [])
+      setProfissionais(profData ?? [])
     })
   }, [])
 
@@ -37,6 +42,7 @@ export default function NovoAlunoForm() {
       setSelecionados(new Set())
       setExtras([])
       setPlanoSelecionadoId('')
+      setProfissionalSelecionadoId('')
     }
   }, [estado])
 
@@ -79,6 +85,7 @@ export default function NovoAlunoForm() {
           <input type="hidden" name="objetivos_especificos" value={obj} key={obj} />
         ))}
         <input type="hidden" name="plano_id" value={planoSelecionadoId} />
+        <input type="hidden" name="profissional_id" value={profissionalSelecionadoId} />
 
         <div className="sm:col-span-2">
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -118,6 +125,20 @@ export default function NovoAlunoForm() {
               <option key={p.id} value={p.id}>
                 {p.nome}{p.valor > 0 ? ` — R$ ${p.valor.toFixed(2).replace('.', ',')}` : ''}
               </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Profissional</label>
+          <select
+            value={profissionalSelecionadoId}
+            onChange={e => setProfissionalSelecionadoId(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Sem profissional</option>
+            {profissionais.map(p => (
+              <option key={p.id} value={p.id}>{p.nome}</option>
             ))}
           </select>
         </div>

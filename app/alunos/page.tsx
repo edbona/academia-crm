@@ -11,6 +11,7 @@ type Aluno = {
   data_nascimento: string | null
   genero: string | null
   cpf: string | null
+  profissional_id: number | null
   objetivo_geral: string | null
   objetivos_especificos: string[] | null
   ativo: boolean

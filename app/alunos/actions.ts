@@ -39,6 +39,7 @@ export async function criarAluno(prevState: Estado, formData: FormData): Promise
     objetivo_geral: (formData.get('objetivo_geral') as string) || null,
     objetivos_especificos: objetivosEspecificos,
     plano_id,
+    profissional_id: (formData.get('profissional_id') as string) ? Number(formData.get('profissional_id')) : null,
   })
 
   if (error) {
@@ -74,6 +75,7 @@ export async function atualizarAluno(id: number, prevState: Estado, formData: Fo
       objetivo_geral: (formData.get('objetivo_geral') as string) || null,
       objetivos_especificos: objetivosEspecificos,
       plano_id,
+      profissional_id: (formData.get('profissional_id') as string) ? Number(formData.get('profissional_id')) : null,
     })
     .eq('id', id)
 
@@ -85,6 +87,17 @@ export async function atualizarAluno(id: number, prevState: Estado, formData: Fo
   revalidatePath('/alunos')
   revalidatePath('/consulta')
   redirect(destino)
+}
+
+export async function atualizarProfissionalAluno(alunoId: number, profissionalId: number | null): Promise<{ erro?: string }> {
+  const { error } = await supabase
+    .from('alunos')
+    .update({ profissional_id: profissionalId })
+    .eq('id', alunoId)
+  if (error) return { erro: error.message }
+  revalidatePath('/consulta')
+  revalidatePath('/alunos')
+  return {}
 }
 
 export async function atualizarPlanoAluno(alunoId: number, planoId: number | null): Promise<{ erro?: string }> {

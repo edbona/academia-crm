@@ -53,7 +53,7 @@ export default function Home() {
           </Link>
           <Link
             href="/financeiro"
-            className="bg-white rounded-xl border border-gray-200 p-6 hover:border-blue-400 hover:shadow-md transition-all group sm:col-span-2"
+            className="bg-white rounded-xl border border-gray-200 p-6 hover:border-blue-400 hover:shadow-md transition-all group"
           >
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center text-2xl group-hover:bg-blue-100 transition-colors">
@@ -62,6 +62,21 @@ export default function Home() {
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">Financeiro</h2>
                 <p className="text-sm text-gray-500">Gerencie planos de adesão e valores</p>
+              </div>
+              <span className="ml-auto text-gray-300 group-hover:text-blue-400 text-xl transition-colors">→</span>
+            </div>
+          </Link>
+          <Link
+            href="/profissionais"
+            className="bg-white rounded-xl border border-gray-200 p-6 hover:border-blue-400 hover:shadow-md transition-all group"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center text-2xl group-hover:bg-blue-100 transition-colors">
+                🏋️
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Profissionais</h2>
+                <p className="text-sm text-gray-500">Gerencie os profissionais da academia</p>
               </div>
               <span className="ml-auto text-gray-300 group-hover:text-blue-400 text-xl transition-colors">→</span>
             </div>
