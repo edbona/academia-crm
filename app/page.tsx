@@ -20,7 +20,7 @@ export default function Home() {
           <p className="text-gray-500 mt-2">Gerencia seu tempo.</p>
         </div>
 
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Link
             href="/alunos"
             className="bg-white rounded-xl border border-gray-200 p-6 hover:border-blue-400 hover:shadow-md transition-all group"
@@ -47,6 +47,21 @@ export default function Home() {
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">Consulta</h2>
                 <p className="text-sm text-gray-500">Busque e filtre alunos por nome, objetivo e idade</p>
+              </div>
+              <span className="ml-auto text-gray-300 group-hover:text-blue-400 text-xl transition-colors">→</span>
+            </div>
+          </Link>
+          <Link
+            href="/financeiro"
+            className="bg-white rounded-xl border border-gray-200 p-6 hover:border-blue-400 hover:shadow-md transition-all group sm:col-span-2"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center text-2xl group-hover:bg-blue-100 transition-colors">
+                💰
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Financeiro</h2>
+                <p className="text-sm text-gray-500">Gerencie planos de adesão e valores</p>
               </div>
               <span className="ml-auto text-gray-300 group-hover:text-blue-400 text-xl transition-colors">→</span>
             </div>
