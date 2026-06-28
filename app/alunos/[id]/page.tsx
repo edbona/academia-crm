@@ -30,7 +30,7 @@ export default async function PerfilAlunoPage({
 
   const { data: aluno, error } = await supabase
     .from('alunos')
-    .select('*, profissionais!profissional_id(id, nome)')
+    .select('*, aluno_profissionais(profissional_id, profissionais(id, nome))')
     .eq('id', id)
     .single()
 
@@ -75,7 +75,22 @@ export default async function PerfilAlunoPage({
             <Campo label="Nome completo" valor={aluno.nome} />
             <Campo label="Gênero" valor={aluno.genero} />
             <Campo label="CPF" valor={aluno.cpf} />
-            <Campo label="Profissional" valor={aluno.profissionais?.nome ?? null} />
+            <div>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Profissional(is)</p>
+              <div className="mt-1">
+                {aluno.aluno_profissionais?.length > 0 ? (
+                  <div className="flex flex-wrap gap-1">
+                    {aluno.aluno_profissionais.map((ap: { profissional_id: number; profissionais: { id: number; nome: string } }) => (
+                      <span key={ap.profissional_id} className="inline-block bg-blue-50 text-blue-700 text-sm px-3 py-1 rounded-full">
+                        {ap.profissionais.nome}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400">—</p>
+                )}
+              </div>
+            </div>
             <Campo label="Telefone" valor={aluno.telefone} />
             <Campo label="E-mail" valor={aluno.email} />
             <Campo

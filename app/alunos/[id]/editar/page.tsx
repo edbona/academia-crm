@@ -14,12 +14,17 @@ export default async function EditarAlunoPage({
 
   const { data: aluno, error } = await supabase
     .from('alunos')
-    .select('*')
+    .select('*, aluno_profissionais(profissional_id)')
     .eq('id', id)
     .single()
 
   if (error || !aluno) {
     notFound()
+  }
+
+  const alunoComProfs = {
+    ...aluno,
+    profissionais_ids: (aluno.aluno_profissionais ?? []).map((ap: { profissional_id: number }) => ap.profissional_id),
   }
 
   return (
@@ -29,7 +34,7 @@ export default async function EditarAlunoPage({
           <h1 className="text-3xl font-bold text-gray-900">Editar Aluno</h1>
           <p className="text-gray-500 mt-1">{aluno.nome}</p>
         </div>
-        <EditarAlunoForm aluno={aluno} origem={from === 'consulta' ? 'consulta' : 'alunos'} />
+        <EditarAlunoForm aluno={alunoComProfs} origem={from === 'consulta' ? 'consulta' : 'alunos'} />
       </div>
     </div>
   )

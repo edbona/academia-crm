@@ -20,7 +20,7 @@ export default function NovoAlunoForm() {
   const [planos, setPlanos] = useState<PlanoOpcao[]>([])
   const [planoSelecionadoId, setPlanoSelecionadoId] = useState('')
   const [profissionais, setProfissionais] = useState<ProfissionalOpcao[]>([])
-  const [profissionalSelecionadoId, setProfissionalSelecionadoId] = useState('')
+  const [profissionaisSelecionados, setProfissionaisSelecionados] = useState<Set<number>>(new Set())
 
   const todosObjetivos = [...catalogo, ...extras]
 
@@ -42,7 +42,7 @@ export default function NovoAlunoForm() {
       setSelecionados(new Set())
       setExtras([])
       setPlanoSelecionadoId('')
-      setProfissionalSelecionadoId('')
+      setProfissionaisSelecionados(new Set())
     }
   }, [estado])
 
@@ -85,7 +85,6 @@ export default function NovoAlunoForm() {
           <input type="hidden" name="objetivos_especificos" value={obj} key={obj} />
         ))}
         <input type="hidden" name="plano_id" value={planoSelecionadoId} />
-        <input type="hidden" name="profissional_id" value={profissionalSelecionadoId} />
 
         <div className="sm:col-span-2">
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -129,18 +128,34 @@ export default function NovoAlunoForm() {
           </select>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Profissional</label>
-          <select
-            value={profissionalSelecionadoId}
-            onChange={e => setProfissionalSelecionadoId(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Sem profissional</option>
-            {profissionais.map(p => (
-              <option key={p.id} value={p.id}>{p.nome}</option>
-            ))}
-          </select>
+        <div className="sm:col-span-2">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Profissional(is)
+            {profissionaisSelecionados.size > 0 && (
+              <span className="ml-2 text-xs font-normal text-blue-600">{profissionaisSelecionados.size} selecionado(s)</span>
+            )}
+          </label>
+          {profissionais.length === 0 ? (
+            <p className="text-sm text-gray-400">Nenhum profissional cadastrado.</p>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              {profissionais.map(p => (
+                <label key={p.id} className="flex items-center gap-2 text-sm cursor-pointer select-none group">
+                  <input
+                    type="checkbox"
+                    name="profissional_ids"
+                    value={p.id}
+                    checked={profissionaisSelecionados.has(p.id)}
+                    onChange={() => setProfissionaisSelecionados(prev => {
+                      const s = new Set(prev); s.has(p.id) ? s.delete(p.id) : s.add(p.id); return s
+                    })}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-gray-700 group-hover:text-gray-900">{p.nome}</span>
+                </label>
+              ))}
+            </div>
+          )}
         </div>
 
         <div>

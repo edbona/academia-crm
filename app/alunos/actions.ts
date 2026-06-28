@@ -16,6 +16,15 @@ async function salvarNovosObjetivos(objetivos: string[]) {
     )
 }
 
+async function sincronizarProfissionais(alunoId: number, profissionalIds: number[]) {
+  await supabase.from('aluno_profissionais').delete().eq('aluno_id', alunoId)
+  if (profissionalIds.length > 0) {
+    await supabase.from('aluno_profissionais').insert(
+      profissionalIds.map(profissional_id => ({ aluno_id: alunoId, profissional_id }))
+    )
+  }
+}
+
 export async function criarAluno(prevState: Estado, formData: FormData): Promise<Estado> {
   const nome = (formData.get('nome') as string)?.trim()
 
@@ -29,7 +38,7 @@ export async function criarAluno(prevState: Estado, formData: FormData): Promise
   const planoIdStr = formData.get('plano_id') as string
   const plano_id = planoIdStr ? Number(planoIdStr) : null
 
-  const { error } = await supabase.from('alunos').insert({
+  const { data: novoAluno, error } = await supabase.from('alunos').insert({
     nome,
     telefone: (formData.get('telefone') as string) || null,
     email: (formData.get('email') as string) || null,
@@ -39,12 +48,14 @@ export async function criarAluno(prevState: Estado, formData: FormData): Promise
     objetivo_geral: (formData.get('objetivo_geral') as string) || null,
     objetivos_especificos: objetivosEspecificos,
     plano_id,
-    profissional_id: (formData.get('profissional_id') as string) ? Number(formData.get('profissional_id')) : null,
-  })
+  }).select('id').single()
 
-  if (error) {
-    return { tipo: 'erro', mensagem: 'Erro ao salvar: ' + error.message }
+  if (error || !novoAluno) {
+    return { tipo: 'erro', mensagem: 'Erro ao salvar: ' + (error?.message ?? 'desconhecido') }
   }
+
+  const profissionalIds = (formData.getAll('profissional_ids') as string[]).map(Number).filter(Boolean)
+  await sincronizarProfissionais(novoAluno.id, profissionalIds)
 
   revalidatePath('/alunos')
   return { tipo: 'sucesso' }
@@ -75,7 +86,6 @@ export async function atualizarAluno(id: number, prevState: Estado, formData: Fo
       objetivo_geral: (formData.get('objetivo_geral') as string) || null,
       objetivos_especificos: objetivosEspecificos,
       plano_id,
-      profissional_id: (formData.get('profissional_id') as string) ? Number(formData.get('profissional_id')) : null,
     })
     .eq('id', id)
 
@@ -83,18 +93,29 @@ export async function atualizarAluno(id: number, prevState: Estado, formData: Fo
     return { tipo: 'erro', mensagem: 'Erro ao atualizar: ' + error.message }
   }
 
+  const profissionalIds = (formData.getAll('profissional_ids') as string[]).map(Number).filter(Boolean)
+  await sincronizarProfissionais(id, profissionalIds)
+
   const destino = (formData.get('origem') as string) === 'consulta' ? '/consulta' : '/alunos'
   revalidatePath('/alunos')
   revalidatePath('/consulta')
   redirect(destino)
 }
 
-export async function atualizarProfissionalAluno(alunoId: number, profissionalId: number | null): Promise<{ erro?: string }> {
-  const { error } = await supabase
-    .from('alunos')
-    .update({ profissional_id: profissionalId })
-    .eq('id', alunoId)
-  if (error) return { erro: error.message }
+export async function atualizarProfissionalAluno(alunoId: number, profissionalIds: number[]): Promise<{ erro?: string }> {
+  const { error: delError } = await supabase
+    .from('aluno_profissionais')
+    .delete()
+    .eq('aluno_id', alunoId)
+  if (delError) return { erro: delError.message }
+
+  if (profissionalIds.length > 0) {
+    const { error: insError } = await supabase.from('aluno_profissionais').insert(
+      profissionalIds.map(profissional_id => ({ aluno_id: alunoId, profissional_id }))
+    )
+    if (insError) return { erro: insError.message }
+  }
+
   revalidatePath('/consulta')
   revalidatePath('/alunos')
   return {}

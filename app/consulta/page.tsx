@@ -16,6 +16,11 @@ type ProfissionalInfo = {
   nome: string
 }
 
+type AlunoProf = {
+  profissional_id: number
+  profissionais: ProfissionalInfo
+}
+
 type Aluno = {
   id: number
   nome: string
@@ -29,8 +34,7 @@ type Aluno = {
   data_cadastro: string
   plano_id: number | null
   planos: PlanoInfo | null
-  profissional_id: number | null
-  profissionais: ProfissionalInfo | null
+  aluno_profissionais: AlunoProf[]
 }
 
 function calcularIdade(dataNascimento: string | null): number | null {
@@ -60,6 +64,19 @@ function TagsObjetivo({ objetivos }: { objetivos: string[] | null }) {
   )
 }
 
+function TagsProfissional({ profs }: { profs: AlunoProf[] }) {
+  if (!profs || profs.length === 0) return <span className="text-gray-400">—</span>
+  return (
+    <div className="flex flex-wrap gap-1">
+      {profs.map(ap => (
+        <span key={ap.profissional_id} className="inline-block bg-green-50 text-green-700 text-xs px-2 py-0.5 rounded-full whitespace-nowrap">
+          {ap.profissionais.nome}
+        </span>
+      ))}
+    </div>
+  )
+}
+
 export default function ConsultaPage() {
   const [alunos, setAlunos] = useState<Aluno[]>([])
   const [catalogo, setCatalogo] = useState<string[]>([])
@@ -80,14 +97,14 @@ export default function ConsultaPage() {
   const [isPendingPlano, startPlano] = useTransition()
 
   const [editandoProfissionalId, setEditandoProfissionalId] = useState<number | null>(null)
-  const [profissionalEditSelecionado, setProfissionalEditSelecionado] = useState('')
+  const [profissionaisEditSelecionados, setProfissionaisEditSelecionados] = useState<Set<number>>(new Set())
   const [isPendingProfissional, startProfissional] = useTransition()
 
   useEffect(() => {
     Promise.all([
       supabase
         .from('alunos')
-        .select('*, planos!plano_id(id, nome, valor), profissionais!profissional_id(id, nome)')
+        .select('*, planos!plano_id(id, nome, valor), aluno_profissionais(profissional_id, profissionais(id, nome))')
         .eq('ativo', true)
         .order('nome'),
       supabase.from('objetivos_catalogo').select('nome').order('nome'),
@@ -110,7 +127,8 @@ export default function ConsultaPage() {
       const nomeOk = aluno.nome.toLowerCase().includes(busca.toLowerCase())
       const objOk = !objetivoFiltro || (aluno.objetivos_especificos ?? []).includes(objetivoFiltro)
       const generoOk = !generoFiltro || aluno.genero === generoFiltro
-      const profOk = !profissionalFiltro || aluno.profissional_id === Number(profissionalFiltro)
+      const profOk = !profissionalFiltro ||
+        aluno.aluno_profissionais.some(ap => ap.profissional_id === Number(profissionalFiltro))
       const idade = calcularIdade(aluno.data_nascimento)
       const idadeOk =
         (min === null || (idade !== null && idade >= min)) &&
@@ -158,26 +176,37 @@ export default function ConsultaPage() {
 
   function iniciarEdicaoProfissional(aluno: Aluno) {
     setEditandoProfissionalId(aluno.id)
-    setProfissionalEditSelecionado(aluno.profissional_id?.toString() ?? '')
+    setProfissionaisEditSelecionados(new Set(aluno.aluno_profissionais.map(ap => ap.profissional_id)))
     setEditandoPlanoId(null)
   }
 
   function cancelarEdicaoProfissional() {
     setEditandoProfissionalId(null)
-    setProfissionalEditSelecionado('')
+    setProfissionaisEditSelecionados(new Set())
+  }
+
+  function toggleProfissionalEdit(id: number) {
+    setProfissionaisEditSelecionados(prev => {
+      const s = new Set(prev)
+      s.has(id) ? s.delete(id) : s.add(id)
+      return s
+    })
   }
 
   function handleSalvarProfissional(alunoId: number) {
-    const profId = profissionalEditSelecionado ? Number(profissionalEditSelecionado) : null
+    const ids = Array.from(profissionaisEditSelecionados)
     startProfissional(async () => {
-      const resultado = await atualizarProfissionalAluno(alunoId, profId)
+      const resultado = await atualizarProfissionalAluno(alunoId, ids)
       if (!resultado.erro) {
-        const profInfo = profId ? (catalogoProfissionais.find(p => p.id === profId) ?? null) : null
+        const novosProfs: AlunoProf[] = ids.map(id => {
+          const info = catalogoProfissionais.find(p => p.id === id)!
+          return { profissional_id: id, profissionais: info }
+        })
         setAlunos(prev => prev.map(a =>
-          a.id === alunoId ? { ...a, profissional_id: profId, profissionais: profInfo } : a
+          a.id === alunoId ? { ...a, aluno_profissionais: novosProfs } : a
         ))
         setEditandoProfissionalId(null)
-        setProfissionalEditSelecionado('')
+        setProfissionaisEditSelecionados(new Set())
       }
     })
   }
@@ -315,7 +344,7 @@ export default function ConsultaPage() {
                     <th className="text-left px-4 py-3 text-gray-600 font-semibold whitespace-nowrap">Gênero</th>
                     <th className="text-left px-4 py-3 text-gray-600 font-semibold whitespace-nowrap">Telefone</th>
                     <th className="text-left px-4 py-3 text-gray-600 font-semibold whitespace-nowrap">Objetivos</th>
-                    <th className="text-left px-4 py-3 text-gray-600 font-semibold whitespace-nowrap">Profissional</th>
+                    <th className="text-left px-4 py-3 text-gray-600 font-semibold whitespace-nowrap">Profissional(is)</th>
                     <th className="text-left px-4 py-3 text-gray-600 font-semibold whitespace-nowrap">Plano</th>
                     {mostrarValores && (
                       <th className="text-left px-4 py-3 text-gray-600 font-semibold whitespace-nowrap">Valor</th>
@@ -341,41 +370,45 @@ export default function ConsultaPage() {
                           <TagsObjetivo objetivos={aluno.objetivos_especificos} />
                         </td>
 
-                        {/* Profissional com edição inline */}
+                        {/* Profissional(is) com edição inline */}
                         <td className="px-4 py-3">
                           {editandoProfissionalId === aluno.id ? (
-                            <div className="flex items-center gap-1.5">
-                              <select
-                                value={profissionalEditSelecionado}
-                                onChange={e => setProfissionalEditSelecionado(e.target.value)}
-                                autoFocus
-                                className="rounded-lg border border-blue-400 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              >
-                                <option value="">Sem profissional</option>
+                            <div className="flex flex-col gap-2">
+                              <div className="flex flex-col gap-1">
                                 {catalogoProfissionais.map(p => (
-                                  <option key={p.id} value={p.id}>{p.nome}</option>
+                                  <label key={p.id} className="flex items-center gap-2 text-xs cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={profissionaisEditSelecionados.has(p.id)}
+                                      onChange={() => toggleProfissionalEdit(p.id)}
+                                      className="rounded border-gray-300 text-blue-600"
+                                    />
+                                    <span>{p.nome}</span>
+                                  </label>
                                 ))}
-                              </select>
-                              <button
-                                onClick={() => handleSalvarProfissional(aluno.id)}
-                                disabled={isPendingProfissional}
-                                className="text-xs px-2 py-1 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                              >
-                                {isPendingProfissional ? '...' : 'Salvar'}
-                              </button>
-                              <button
-                                onClick={cancelarEdicaoProfissional}
-                                className="text-xs px-2 py-1 rounded-lg border border-gray-300 text-gray-500 hover:bg-gray-50 transition-colors"
-                              >
-                                ✕
-                              </button>
+                              </div>
+                              <div className="flex gap-1">
+                                <button
+                                  onClick={() => handleSalvarProfissional(aluno.id)}
+                                  disabled={isPendingProfissional}
+                                  className="text-xs px-2 py-1 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                                >
+                                  {isPendingProfissional ? '...' : 'Salvar'}
+                                </button>
+                                <button
+                                  onClick={cancelarEdicaoProfissional}
+                                  className="text-xs px-2 py-1 rounded-lg border border-gray-300 text-gray-500 hover:bg-gray-50 transition-colors"
+                                >
+                                  ✕
+                                </button>
+                              </div>
                             </div>
                           ) : (
-                            <div className="flex items-center gap-2">
-                              <span className="text-gray-700">{aluno.profissionais?.nome ?? '—'}</span>
+                            <div className="flex items-start gap-2">
+                              <TagsProfissional profs={aluno.aluno_profissionais} />
                               <button
                                 onClick={() => iniciarEdicaoProfissional(aluno)}
-                                className="text-xs text-blue-500 hover:text-blue-700 hover:underline transition-colors shrink-0"
+                                className="text-xs text-blue-500 hover:text-blue-700 hover:underline transition-colors shrink-0 mt-0.5"
                               >
                                 Editar
                               </button>
@@ -471,12 +504,20 @@ export default function ConsultaPage() {
                     </Link>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-gray-500">
                       {aluno.genero && <span className="capitalize">⚧ {aluno.genero}</span>}
-                      {aluno.profissionais && <span>👤 {aluno.profissionais.nome}</span>}
                       {aluno.planos && <span>📋 {aluno.planos.nome}</span>}
                       {aluno.telefone && <span>📱 {aluno.telefone}</span>}
                       {idade !== null && <span>🎂 {idade} anos</span>}
                       <span>📅 {new Date(aluno.data_cadastro).toLocaleDateString('pt-BR')}</span>
                     </div>
+                    {aluno.aluno_profissionais.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {aluno.aluno_profissionais.map(ap => (
+                          <span key={ap.profissional_id} className="inline-block bg-green-50 text-green-700 text-xs px-2 py-0.5 rounded-full">
+                            👤 {ap.profissionais.nome}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                     {aluno.objetivo_geral && (
                       <p className="mt-1 text-sm text-gray-500 italic">{aluno.objetivo_geral}</p>
                     )}
