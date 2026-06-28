@@ -48,6 +48,7 @@ export default function ConsultaPage() {
   const [carregando, setCarregando] = useState(true)
   const [busca, setBusca] = useState('')
   const [objetivoFiltro, setObjetivoFiltro] = useState('')
+  const [generoFiltro, setGeneroFiltro] = useState('')
   const [idadeMin, setIdadeMin] = useState('')
   const [idadeMax, setIdadeMax] = useState('')
   const [modo, setModo] = useState<'lista' | 'tabela'>('tabela')
@@ -72,13 +73,14 @@ export default function ConsultaPage() {
       const objOk =
         !objetivoFiltro ||
         (aluno.objetivos_especificos ?? []).includes(objetivoFiltro)
+      const generoOk = !generoFiltro || aluno.genero === generoFiltro
       const idade = calcularIdade(aluno.data_nascimento)
       const idadeOk =
         (min === null || (idade !== null && idade >= min)) &&
         (max === null || (idade !== null && idade <= max))
-      return nomeOk && objOk && idadeOk
+      return nomeOk && objOk && generoOk && idadeOk
     })
-  }, [alunos, busca, objetivoFiltro, idadeMin, idadeMax])
+  }, [alunos, busca, objetivoFiltro, generoFiltro, idadeMin, idadeMax])
 
   async function handleExcluir(id: number, nome: string) {
     if (!confirm(`Tem certeza que deseja excluir ${nome}? Esta ação não pode ser desfeita.`)) return
@@ -102,7 +104,7 @@ export default function ConsultaPage() {
           </Link>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Buscar por nome</label>
             <input
@@ -126,6 +128,20 @@ export default function ConsultaPage() {
               ))}
             </select>
           </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Gênero</label>
+            <select
+              value={generoFiltro}
+              onChange={e => setGeneroFiltro(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Todos</option>
+              <option value="masculino">Masculino</option>
+              <option value="feminino">Feminino</option>
+              <option value="outro">Outro</option>
+            </select>
+          </div>
+
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Faixa de idade</label>
             <div className="flex items-center gap-2">
