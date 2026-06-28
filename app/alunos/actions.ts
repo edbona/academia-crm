@@ -71,8 +71,10 @@ export async function atualizarAluno(id: number, prevState: Estado, formData: Fo
     return { tipo: 'erro', mensagem: 'Erro ao atualizar: ' + error.message }
   }
 
+  const destino = (formData.get('origem') as string) === 'consulta' ? '/consulta' : '/alunos'
   revalidatePath('/alunos')
-  redirect('/alunos')
+  revalidatePath('/consulta')
+  redirect(destino)
 }
 
 export async function alterarStatus(id: number, ativo: boolean, _formData: FormData) {

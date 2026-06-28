@@ -221,7 +221,7 @@ export default function ConsultaPage() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex gap-2">
-                          <Link href={`/alunos/${aluno.id}/editar`} className="text-xs px-3 py-1 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors">
+                          <Link href={`/alunos/${aluno.id}/editar?from=consulta`} className="text-xs px-3 py-1 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors">
                             Editar
                           </Link>
                           <button onClick={() => handleExcluir(aluno.id, aluno.nome)} className="text-xs px-3 py-1 rounded-lg border border-red-300 text-red-600 hover:bg-red-50 transition-colors">
@@ -259,7 +259,7 @@ export default function ConsultaPage() {
                     </div>
                   </div>
                   <div className="flex gap-2 shrink-0">
-                    <Link href={`/alunos/${aluno.id}/editar`} className="text-xs px-3 py-1 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors">
+                    <Link href={`/alunos/${aluno.id}/editar?from=consulta`} className="text-xs px-3 py-1 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors">
                       Editar
                     </Link>
                     <button onClick={() => handleExcluir(aluno.id, aluno.nome)} className="text-xs px-3 py-1 rounded-lg border border-red-300 text-red-600 hover:bg-red-50 transition-colors">

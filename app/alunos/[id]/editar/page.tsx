@@ -4,10 +4,13 @@ import EditarAlunoForm from './EditarAlunoForm'
 
 export default async function EditarAlunoPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ [key: string]: string | undefined }>
 }) {
   const { id } = await params
+  const { from } = await searchParams
 
   const { data: aluno, error } = await supabase
     .from('alunos')
@@ -26,7 +29,7 @@ export default async function EditarAlunoPage({
           <h1 className="text-3xl font-bold text-gray-900">Editar Aluno</h1>
           <p className="text-gray-500 mt-1">{aluno.nome}</p>
         </div>
-        <EditarAlunoForm aluno={aluno} />
+        <EditarAlunoForm aluno={aluno} origem={from === 'consulta' ? 'consulta' : 'alunos'} />
       </div>
     </div>
   )

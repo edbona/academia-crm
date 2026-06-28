@@ -18,7 +18,7 @@ type Aluno = {
 
 type Estado = { tipo: 'erro'; mensagem: string } | { tipo: 'sucesso' } | null
 
-export default function EditarAlunoForm({ aluno }: { aluno: Aluno }) {
+export default function EditarAlunoForm({ aluno, origem }: { aluno: Aluno; origem: 'alunos' | 'consulta' }) {
   const atualizarComId = atualizarAluno.bind(null, aluno.id)
   const [estado, action, pending] = useActionState<Estado, FormData>(atualizarComId, null)
 
@@ -71,6 +71,7 @@ export default function EditarAlunoForm({ aluno }: { aluno: Aluno }) {
       )}
 
       <form action={action} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <input type="hidden" name="origem" value={origem} />
         {[...selecionados].map(obj => (
           <input type="hidden" name="objetivos_especificos" value={obj} key={obj} />
         ))}
@@ -210,7 +211,7 @@ export default function EditarAlunoForm({ aluno }: { aluno: Aluno }) {
             {pending ? 'Salvando...' : 'Salvar alterações'}
           </button>
           <Link
-            href="/alunos"
+            href={origem === 'consulta' ? '/consulta' : '/alunos'}
             className="px-6 py-2 bg-white border border-gray-300 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
           >
             ← Voltar
